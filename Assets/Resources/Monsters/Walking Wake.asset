@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6be658b6d624024982a51419353e42f, type: 3}
+  m_Name: Walking Wake
+  m_EditorClassIdentifier: 
+  speciesName: Walking Wake
+  typing: 020000000f000000
+  <BaseStats>k__BackingField:
+    <Health>k__BackingField: 99
+    <Strength>k__BackingField: 83
+    <Defense>k__BackingField: 91
+    <Intelligence>k__BackingField: 125
+    <Resilience>k__BackingField: 83
+    <Readiness>k__BackingField: 109
+    <Reflex>k__BackingField: -1
+  sprite: {fileID: 21300000, guid: b096ea67e3c4919498f63e1ec233f4a1, type: 3}
