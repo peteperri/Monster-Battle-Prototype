@@ -25,33 +25,5 @@ public class NatureEffect
         if (_reducedStat == statToCheck) return 0.9f;
         
         return 1f;
-        
-        
-
-        /*switch (index)
-        {
-            case 1:
-                return GetMultiplierFromStat(Stat.Strength);
-            case 2: 
-                return GetMultiplierFromStat(Stat.Defense);
-            case 3: 
-                return GetMultiplierFromStat(Stat.Intelligence);
-            case 4: 
-                return GetMultiplierFromStat(Stat.Resilience);
-            case 5: 
-                return GetMultiplierFromStat(Stat.Readiness);
-            case 6:
-                return GetMultiplierFromStat(Stat.Reflex);
-            default:
-                Debug.LogError("Tried to get nature multiplier for HP or an index higher than 7!!");
-                return -1;
-        }*/
     }
-
-    /*private float GetMultiplierFromStat(Stat stat)
-    {
-        if (BoostedStat == stat) return 1.1f;
-        if (ReducedStat == stat) return 0.9f;
-        return 1f;
-    }*/
 }

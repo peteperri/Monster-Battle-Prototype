@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Random = UnityEngine.Random;
 
-//source for natures: https://bulbapedia.bulbagarden.net/wiki/Nature
+//natures are 10% boosts or 10% reductions to stats. bane/boon. customizable across monster units
+//source for natures and their effects: https://bulbapedia.bulbagarden.net/wiki/Nature
 public enum Nature
 {
     //boost str/atk
@@ -21,17 +22,18 @@ public enum Nature
     //boost res/spdef
     Calm, Gentle, Sassy, Careful, Quirky
     
-    //ADD NATURES TO BOOST/REDUCE REFLEX
+    //TODO: ADD NATURES TO BOOST/REDUCE REFLEX
     
 }
 
-
+//utility class for actions/constants relating to natures
 public static class NatureHelper
 {
     
     //some natures boost and reduce the same stat; these are the neutral natures
     public static readonly ReadOnlyDictionary<Nature, NatureEffect> NatureEffectsMap = new ReadOnlyDictionary<Nature, NatureEffect>(new Dictionary<Nature, NatureEffect>
         {
+            //TODO: Is there a better way to do this? 
             
             //all natures that boost strength (phys atk)
             { Nature.Hardy, new NatureEffect(Stat.Strength, Stat.Strength) },
@@ -69,7 +71,7 @@ public static class NatureHelper
             { Nature.Careful, new NatureEffect(Stat.Resilience, Stat.Intelligence) },
             { Nature.Quirky, new NatureEffect(Stat.Resilience, Stat.Resilience) },
             
-            //add natures to boost/reduce reflex
+            //TODO: add natures to boost/reduce reflex
         });
     
     public static Nature GetRandomNature()

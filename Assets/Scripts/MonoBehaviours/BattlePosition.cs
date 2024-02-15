@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 public class BattlePosition : MonoBehaviour
@@ -19,7 +18,7 @@ public class BattlePosition : MonoBehaviour
     public void SendMonster(MonsterUnit monster)
     {
         monsterHere = monster;
-        _spriteRenderer.sprite = monster.GetSpecies().GetSprite();
+        _spriteRenderer.sprite = monster.GetSpecies().Sprite;
     }
 
 }

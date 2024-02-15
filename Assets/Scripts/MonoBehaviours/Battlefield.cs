@@ -1,5 +1,6 @@
 using UnityEngine;
 
+//the battlefield class will handle the basic gameplay loop of a battle
 public class Battlefield : MonoBehaviour
 {
     private Trainer _player1;
@@ -35,19 +36,14 @@ public class Battlefield : MonoBehaviour
         SendOutMonsters(_player1, _p1MonA, _p1MonB);
         SendOutMonsters(_player2, _p2MonA, _p2MonB);
     }
-
-    private void Update()
-    {
-        
-    }
     
-
     private static void SendOutMonsters(Trainer player, BattlePosition spotA, BattlePosition spotB)
     {
         spotA.SendMonster(player.team[0]);
         spotB.SendMonster(player.team[1]);
     }
 
+    //this method detects if a player has no team. if they have no team, give them a random one.
     private static void TeamCheck(Trainer player)
     {
         if (player.team.Length == 0)
@@ -57,6 +53,7 @@ public class Battlefield : MonoBehaviour
         }
     }
 
+    //TODO: Make it so random teams do not feature duplicate monsters
     private static void GiveRandomTeam(Trainer player, MonsterSpecies[] allSpecies)
     {
         MonsterUnit[] randomTeam = new MonsterUnit[6];
@@ -65,6 +62,10 @@ public class Battlefield : MonoBehaviour
             int randIndex = Random.Range(0, allSpecies.Length - 1);
             MonsterSpecies randomMonster = allSpecies[randIndex];
             //randomTeam[i] = new MonsterUnit(randomMonster);
+            
+            /*TODO: remove/comment out this line and uncomment the above.
+             using random natures to ensure stat calculation is working; 
+             random teams will all have neutral natures normally*/
             randomTeam[i] = new MonsterUnit(randomMonster, NatureHelper.GetRandomNature());
         }
         player.team = randomTeam;
