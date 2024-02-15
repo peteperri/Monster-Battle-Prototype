@@ -6,8 +6,4 @@ public class Trainer : MonoBehaviour
     public MonsterUnit[] team;
 
     
-    void Start()
-    {
-    }
-    
 }

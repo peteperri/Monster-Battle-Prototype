@@ -3,12 +3,17 @@ using UnityEngine;
 
 public class BattlePosition : MonoBehaviour
 {
-    private MonsterUnit monsterHere;
+    [SerializeField] private MonsterUnit monsterHere;
     private SpriteRenderer _spriteRenderer;
-        
-    void Start()
+
+
+    void Awake()
     {
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        if (_spriteRenderer == null)
+        {
+            gameObject.AddComponent<SpriteRenderer>();
+        }
     }
 
     public void SendMonster(MonsterUnit monster)

@@ -10,24 +10,7 @@ public class Battlefield : MonoBehaviour
     private BattlePosition _p2MonA;
     private BattlePosition _p2MonB;
     
-    private void Start()
-    {
-        
-        Initialize();
-        
-        TeamCheck(_player1);
-        TeamCheck(_player2);
-
-        SendOutMonsters(_player1, _p1MonA, _p1MonB);
-        SendOutMonsters(_player2, _p2MonA, _p2MonB);
-    }
-
-    private void Update()
-    {
-        
-    }
-
-    private void Initialize()
+    private void Awake()
     {
         Transform players = transform.Find("Players");
         _player1 = players.GetChild(0).GetComponent<Trainer>();
@@ -44,6 +27,21 @@ public class Battlefield : MonoBehaviour
         _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
     }
 
+    private void Start()
+    {
+        TeamCheck(_player1);
+        TeamCheck(_player2);
+
+        SendOutMonsters(_player1, _p1MonA, _p1MonB);
+        SendOutMonsters(_player2, _p2MonA, _p2MonB);
+    }
+
+    private void Update()
+    {
+        
+    }
+    
+
     private static void SendOutMonsters(Trainer player, BattlePosition spotA, BattlePosition spotB)
     {
         spotA.SendMonster(player.team[0]);
@@ -57,21 +55,17 @@ public class Battlefield : MonoBehaviour
             MonsterSpecies[] allSpecies = Resources.LoadAll<MonsterSpecies>("Monsters");
             GiveRandomTeam(player, allSpecies);
         }
-        else
-        {
-            Debug.Log($"{player.team == null} {player.team.Length}");
-        }
     }
 
     private static void GiveRandomTeam(Trainer player, MonsterSpecies[] allSpecies)
     {
-        Debug.Log("Giving Random Team");
         MonsterUnit[] randomTeam = new MonsterUnit[6];
         for (int i = 0; i < 6; i++)
         {
             int randIndex = Random.Range(0, allSpecies.Length - 1);
             MonsterSpecies randomMonster = allSpecies[randIndex];
-            randomTeam[i] = new MonsterUnit(randomMonster);
+            //randomTeam[i] = new MonsterUnit(randomMonster);
+            randomTeam[i] = new MonsterUnit(randomMonster, NatureHelper.GetRandomNature());
         }
         player.team = randomTeam;
     }

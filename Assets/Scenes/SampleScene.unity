@@ -253,6 +253,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b93a41ea94a2c584d8e0e1a5ce629a80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  monsterHere:
+    species: {fileID: 0}
+    statInvestments:
+      healthValues: 85
+      strengthValues: 0
+      defenseValues: 0
+      intelligenceValues: 0
+      resilienceValues: 0
+      readinessValues: 0
+      reflexValues: 0
+    nature: 0
 --- !u!1 &118310802
 GameObject:
   m_ObjectHideFlags: 0
@@ -546,6 +557,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b93a41ea94a2c584d8e0e1a5ce629a80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  monsterHere:
+    species: {fileID: 0}
+    statInvestments:
+      healthValues: 85
+      strengthValues: 0
+      defenseValues: 0
+      intelligenceValues: 0
+      resilienceValues: 0
+      readinessValues: 0
+      reflexValues: 0
+    nature: 0
 --- !u!1 &1334441580
 GameObject:
   m_ObjectHideFlags: 0
@@ -643,6 +665,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b93a41ea94a2c584d8e0e1a5ce629a80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  monsterHere:
+    species: {fileID: 0}
+    statInvestments:
+      healthValues: 85
+      strengthValues: 0
+      defenseValues: 0
+      intelligenceValues: 0
+      resilienceValues: 0
+      readinessValues: 0
+      reflexValues: 0
+    nature: 0
 --- !u!1 &1795875333
 GameObject:
   m_ObjectHideFlags: 0
@@ -918,3 +951,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b93a41ea94a2c584d8e0e1a5ce629a80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  monsterHere:
+    species: {fileID: 0}
+    statInvestments:
+      healthValues: 85
+      strengthValues: 0
+      defenseValues: 0
+      intelligenceValues: 0
+      resilienceValues: 0
+      readinessValues: 0
+      reflexValues: 0
+    nature: 0
