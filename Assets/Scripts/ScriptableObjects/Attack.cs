@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[System.Serializable]
 [CreateAssetMenu(fileName = "New Attack", menuName = "Attack")]
 public class Attack : ScriptableObject
 {

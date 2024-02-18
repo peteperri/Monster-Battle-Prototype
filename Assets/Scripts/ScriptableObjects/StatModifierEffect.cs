@@ -9,7 +9,7 @@ public class StatModifierEffect : AttackEffect
 
     public override void ExecuteSecondaryEffect(MonsterUnit unit)
     {
-        
+        if (statToEffect == Stat.Health) return;
         unit.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
     }
 }

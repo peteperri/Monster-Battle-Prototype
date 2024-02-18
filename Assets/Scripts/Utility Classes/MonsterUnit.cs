@@ -9,12 +9,14 @@ public class MonsterUnit
     private MonsterSpecies _species;
     private EffortValues _statInvestments;
     private Nature _nature;
+
+    private Attack[] _knownMoves;
     
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
     private SerializedDictionary<Stat, int> _statsBeforeModifiers;
     
     public SerializedDictionary<Stat, int> StatsAfterMultipliers { get; }
-    public SerializedDictionary<Stat, int> StatModifiers { get; }
+    public SerializedDictionary<Stat, int> StatModifierStages { get; }
 
     public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature)
     {
@@ -23,7 +25,16 @@ public class MonsterUnit
         _nature = nature;
         _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
         StatsAfterMultipliers = new SerializedDictionary<Stat, int>();
-        StatModifiers = new SerializedDictionary<Stat, int>();
+        StatModifierStages = new SerializedDictionary<Stat, int>();
+        _knownMoves = new Attack[4];
+        
+        //TODO: COMMENT OUT THIS LOOP
+        //currently gives every mon the first four moves in their learnset
+        for (int i = 0; i < _knownMoves.Length && i < _species.LearnSet.Length; i++)
+        {
+            _knownMoves[i] = _species.LearnSet[i];
+        }
+
         ComputeStartingStats();
     }
     
@@ -51,7 +62,9 @@ public class MonsterUnit
     {
         foreach (Stat stat in Enum.GetValues(typeof(Stat)))
         {
-            int modifierStages = StatModifiers[stat];
+            if (stat == Stat.Health) continue;
+            
+            int modifierStages = StatModifierStages[stat];
             int multiplierNumerator = 2;
             int multiplierDenominator = 2;
 
@@ -76,7 +89,7 @@ public class MonsterUnit
 
     public void ApplyStatModifier(Stat statToModify, int byHowManyStages)
     {
-        int currentStatModifiers = StatModifiers[statToModify];
+        int currentStatModifiers = StatModifierStages[statToModify];
         bool statCannotGoLower = byHowManyStages < 0 && currentStatModifiers <= -6;
         bool statCannotGoHigher = byHowManyStages > 0 && currentStatModifiers >= 6;
         if (statCannotGoHigher || statCannotGoLower)
@@ -87,7 +100,7 @@ public class MonsterUnit
         int newStatModifier = currentStatModifiers + byHowManyStages;
         Mathf.Clamp(newStatModifier, -6, 6);
 
-        StatModifiers[statToModify] = newStatModifier;
+        StatModifierStages[statToModify] = newStatModifier;
         ComputeModifiedStats();
 
     }

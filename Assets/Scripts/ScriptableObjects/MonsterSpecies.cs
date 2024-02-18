@@ -10,7 +10,9 @@ public class MonsterSpecies : ScriptableObject
     
     //source for all pokemon sprites: https://www.serebii.net/pokedex-sv/ 
     [field: SerializeField] public Sprite Sprite { get; private set; }
-    
+
+    [field: SerializeField] public Attack[] LearnSet { get; private set; }
+
 }
 
 
