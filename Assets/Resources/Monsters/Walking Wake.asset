@@ -22,4 +22,4 @@ MonoBehaviour:
     <Resilience>k__BackingField: 83
     <Readiness>k__BackingField: 109
     <Reflex>k__BackingField: -1
-  sprite: {fileID: 21300000, guid: b096ea67e3c4919498f63e1ec233f4a1, type: 3}
+  <Sprite>k__BackingField: {fileID: 21300000, guid: b096ea67e3c4919498f63e1ec233f4a1, type: 3}

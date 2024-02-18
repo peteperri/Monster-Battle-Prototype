@@ -1,5 +1,6 @@
 using System;
 using AYellowpaper.SerializedCollections;
+using UnityEngine;
 
 //a monster unit is an individual, customized monster. only customizable/changeable traits are controlled by this class
 [Serializable]
@@ -10,15 +11,20 @@ public class MonsterUnit
     private Nature _nature;
     
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
-    private SerializedDictionary<Stat, int> _stats;
+    private SerializedDictionary<Stat, int> _statsBeforeModifiers;
+    
+    public SerializedDictionary<Stat, int> StatsAfterMultipliers { get; }
+    public SerializedDictionary<Stat, int> StatModifiers { get; }
 
     public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature)
     {
         _species = species;
         _statInvestments = evs;
         _nature = nature;
-        _stats = new SerializedDictionary<Stat, int>();
-        ComputeStats();
+        _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
+        StatsAfterMultipliers = new SerializedDictionary<Stat, int>();
+        StatModifiers = new SerializedDictionary<Stat, int>();
+        ComputeStartingStats();
     }
     
     //chained constructors
@@ -27,7 +33,7 @@ public class MonsterUnit
     public MonsterUnit(MonsterSpecies species, Nature nature) 
         : this(species, new EffortValues(), nature) {}
 
-    public void ComputeStats()
+    public void ComputeStartingStats()
     {
         BaseStats baseStats = _species.BaseStats;
         int[] calculatedStats = CalcAllStats(baseStats, _statInvestments, _nature);
@@ -36,7 +42,30 @@ public class MonsterUnit
         for (int i = 0; i < calculatedStats.Length; i++)
         {
             Stat statName = (Stat)statNames.GetValue(i);
-            _stats.Add(statName, calculatedStats[i]);
+            _statsBeforeModifiers.Add(statName, calculatedStats[i]);
+            StatsAfterMultipliers.Add(statName, calculatedStats[i]);
+        }
+    }
+    
+    public void ComputeModifiedStats()
+    {
+        foreach (Stat stat in Enum.GetValues(typeof(Stat)))
+        {
+            int modifierStages = StatModifiers[stat];
+            int multiplierNumerator = 2;
+            int multiplierDenominator = 2;
+
+            if (modifierStages > 0)
+            {
+                multiplierNumerator += modifierStages;
+            }
+            else if (modifierStages < 0)
+            {
+                multiplierDenominator += modifierStages;
+            }
+
+            float newStat = _statsBeforeModifiers[stat] * ((float) multiplierNumerator / multiplierDenominator);
+            StatsAfterMultipliers[stat] = (int) newStat;
         }
     }
 
@@ -44,7 +73,27 @@ public class MonsterUnit
     {
         return _species;
     }
+
+    public void ApplyStatModifier(Stat statToModify, int byHowManyStages)
+    {
+        int currentStatModifiers = StatModifiers[statToModify];
+        bool statCannotGoLower = byHowManyStages < 0 && currentStatModifiers <= -6;
+        bool statCannotGoHigher = byHowManyStages > 0 && currentStatModifiers >= 6;
+        if (statCannotGoHigher || statCannotGoLower)
+        {
+            return;
+        }
+
+        int newStatModifier = currentStatModifiers + byHowManyStages;
+        Mathf.Clamp(newStatModifier, -6, 6);
+
+        StatModifiers[statToModify] = newStatModifier;
+        ComputeModifiedStats();
+
+    }
+
     
+
     public static int[] CalcAllStats(BaseStats baseStats, EffortValues evs, Nature nature, int iv = 31, int level = 100)
     {
         int[] calculatedStats = new int[7];
