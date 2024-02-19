@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 502e7ffb3f81458db243dd99eb7cba5f, type: 3}
   m_Name: CloseCombat_AE2
   m_EditorClassIdentifier: 
-  statToEffect: 0
-  stagesToAddOrRemove: 0
+  statToEffect: 4
+  stagesToAddOrRemove: -1

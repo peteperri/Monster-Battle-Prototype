@@ -28,12 +28,12 @@ public class MonsterUnit
         StatModifierStages = new SerializedDictionary<Stat, int>();
         _knownMoves = new Attack[4];
         
-        //TODO: COMMENT OUT THIS LOOP
+        /*//TODO: COMMENT OUT THIS LOOP
         //currently gives every mon the first four moves in their learnset
         for (int i = 0; i < _knownMoves.Length && i < _species.LearnSet.Length; i++)
         {
             _knownMoves[i] = _species.LearnSet[i];
-        }
+        }*/
 
         ComputeStartingStats();
     }
