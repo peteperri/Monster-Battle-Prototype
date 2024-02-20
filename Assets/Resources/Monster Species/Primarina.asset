@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6be658b6d624024982a51419353e42f, type: 3}
+  m_Name: Primarina
+  m_EditorClassIdentifier: 
+  speciesName: Primarina
+  typing: 0200000011000000
+  <BaseStats>k__BackingField:
+    <Health>k__BackingField: 80
+    <Strength>k__BackingField: 74
+    <Defense>k__BackingField: 74
+    <Intelligence>k__BackingField: 126
+    <Resilience>k__BackingField: 116
+    <Readiness>k__BackingField: 60
+    <Reflex>k__BackingField: -1
+  <Sprite>k__BackingField: {fileID: 21300000, guid: a6c4e5d7a6c272f41abe43258ef55cca, type: 3}
+  <LearnSet>k__BackingField: []
