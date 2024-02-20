@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public abstract class AttackEffect : ScriptableObject
 {
-    public virtual void ExecuteSecondaryEffect(MonsterUnit unit)
+    public virtual void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
     {
         Debug.Log("This attack has no secondary effect.");
     }

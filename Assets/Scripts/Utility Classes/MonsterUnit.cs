@@ -10,13 +10,12 @@ public class MonsterUnit
     private EffortValues _statInvestments;
     private Nature _nature;
 
-    private Attack[] _knownMoves;
+    private Attack[] _knownAttacks;
     
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
     private SerializedDictionary<Stat, int> _statsBeforeModifiers;
-    
-    public SerializedDictionary<Stat, int> StatsAfterMultipliers { get; }
-    public SerializedDictionary<Stat, int> StatModifierStages { get; }
+    private SerializedDictionary<Stat, int> _statsAfterMultipliers;
+    private SerializedDictionary<Stat, int> _statModifierStages;
 
     public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature)
     {
@@ -24,16 +23,16 @@ public class MonsterUnit
         _statInvestments = evs;
         _nature = nature;
         _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
-        StatsAfterMultipliers = new SerializedDictionary<Stat, int>();
-        StatModifierStages = new SerializedDictionary<Stat, int>();
-        _knownMoves = new Attack[4];
+        _statsAfterMultipliers = new SerializedDictionary<Stat, int>();
+        _statModifierStages = new SerializedDictionary<Stat, int>();
+        _knownAttacks = new Attack[4];
         
-        /*//TODO: COMMENT OUT THIS LOOP
+        //TODO: COMMENT OUT THIS LOOP
         //currently gives every mon the first four moves in their learnset
-        for (int i = 0; i < _knownMoves.Length && i < _species.LearnSet.Length; i++)
+        for (int i = 0; i < _knownAttacks.Length && i < _species.LearnSet.Length; i++)
         {
-            _knownMoves[i] = _species.LearnSet[i];
-        }*/
+            _knownAttacks[i] = _species.LearnSet[i];
+        }
 
         ComputeStartingStats();
     }
@@ -54,7 +53,8 @@ public class MonsterUnit
         {
             Stat statName = (Stat)statNames.GetValue(i);
             _statsBeforeModifiers.Add(statName, calculatedStats[i]);
-            StatsAfterMultipliers.Add(statName, calculatedStats[i]);
+            _statsAfterMultipliers.Add(statName, calculatedStats[i]);
+            _statModifierStages.Add(statName, 0);
         }
     }
     
@@ -64,7 +64,7 @@ public class MonsterUnit
         {
             if (stat == Stat.Health) continue;
             
-            int modifierStages = StatModifierStages[stat];
+            int modifierStages = _statModifierStages[stat];
             int multiplierNumerator = 2;
             int multiplierDenominator = 2;
 
@@ -74,11 +74,13 @@ public class MonsterUnit
             }
             else if (modifierStages < 0)
             {
-                multiplierDenominator += modifierStages;
+                multiplierDenominator += Math.Abs(modifierStages); //absolute value because stages are negative but we want the denominator to increase 
             }
-
+            
+            //Debug.Log($"{multiplierNumerator}/{multiplierDenominator}");
+            
             float newStat = _statsBeforeModifiers[stat] * ((float) multiplierNumerator / multiplierDenominator);
-            StatsAfterMultipliers[stat] = (int) newStat;
+            _statsAfterMultipliers[stat] = (int) newStat;
         }
     }
 
@@ -89,7 +91,7 @@ public class MonsterUnit
 
     public void ApplyStatModifier(Stat statToModify, int byHowManyStages)
     {
-        int currentStatModifiers = StatModifierStages[statToModify];
+        int currentStatModifiers = _statModifierStages[statToModify];
         bool statCannotGoLower = byHowManyStages < 0 && currentStatModifiers <= -6;
         bool statCannotGoHigher = byHowManyStages > 0 && currentStatModifiers >= 6;
         if (statCannotGoHigher || statCannotGoLower)
@@ -100,12 +102,59 @@ public class MonsterUnit
         int newStatModifier = currentStatModifiers + byHowManyStages;
         Mathf.Clamp(newStatModifier, -6, 6);
 
-        StatModifierStages[statToModify] = newStatModifier;
+        _statModifierStages[statToModify] = newStatModifier;
         ComputeModifiedStats();
 
     }
 
+    public void UseAttack(int attackIndex, MonsterUnit[] targets)
+    {
+        if (attackIndex > _knownAttacks.Length || attackIndex < 0)
+        {
+            return;
+        }
+        
+        
+
+        Attack attack = _knownAttacks[attackIndex];
+        foreach (MonsterUnit target in targets)
+        {
+            Debug.Log($"{_species.name} is using {attack.name} on {target._species.name}!");
+            int damageToDeal = 0;
+            if (attack.Category == AttackCategory.Physical)
+            {
+                float attackStat = this._statsAfterMultipliers[Stat.Strength];
+                float defenseStat = target._statsAfterMultipliers[Stat.Defense];
+                damageToDeal = CalculateDamage(attackStat, defenseStat, attack.BasePower);
+                target.TakeDamage(damageToDeal);
+            }
+            else if (attack.Category == AttackCategory.Special)
+            {
+                float attackStat = this._statsAfterMultipliers[Stat.Intelligence];
+                float defenseStat = target._statsAfterMultipliers[Stat.Resilience];
+                damageToDeal = CalculateDamage(attackStat, defenseStat, attack.BasePower);
+                target.TakeDamage(damageToDeal);
+            }
+            for (int i = 0; i < attack.SecondaryEffect.Length; i++)
+            {
+                attack.SecondaryEffect[i].ExecuteSecondaryEffect(this, target);
+            }
+        }
+    }
     
+    public void TakeDamage(int amount)
+    {
+        int currentHealth = _statsAfterMultipliers[Stat.Health];
+        currentHealth -= amount;
+        currentHealth = Mathf.Clamp(currentHealth, 0, _statsBeforeModifiers[Stat.Health]);
+        _statsAfterMultipliers[Stat.Health] = currentHealth;
+        if (currentHealth <= 0)
+        {
+            Debug.Log($"{this._species.name} has fainted!");
+        }
+    }
+
+
 
     public static int[] CalcAllStats(BaseStats baseStats, EffortValues evs, Nature nature, int iv = 31, int level = 100)
     {
@@ -142,6 +191,14 @@ public class MonsterUnit
         return (int) (rawStat * natureMultiplier);
     }
 
+    //formula source: "Generation V onward" https://bulbapedia.bulbagarden.net/wiki/Damage
+    public static int CalculateDamage(float myAttackingStat, float opponentsDefendingStat, float movePower, float multipliers = 1, int level = 100)
+    {
+        float levelFactor = ((2 * level) / 5 + 2);
+        float statFactor = movePower * (myAttackingStat / opponentsDefendingStat);
+        float rawDamage = (levelFactor * statFactor) / 50 + 2;
+        return Mathf.RoundToInt(rawDamage * multipliers);
+    }
 }
 
 

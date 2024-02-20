@@ -7,9 +7,9 @@ public class StatModifierEffect : AttackEffect
     [SerializeField] private Stat statToEffect;
     [SerializeField] private int stagesToAddOrRemove;
 
-    public override void ExecuteSecondaryEffect(MonsterUnit unit)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
     {
         if (statToEffect == Stat.Health) return;
-        unit.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
+        thisMonsterUnit.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
     }
 }

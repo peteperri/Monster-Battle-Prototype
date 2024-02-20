@@ -36,7 +36,24 @@ public class Battlefield : MonoBehaviour
         SendOutMonsters(_player1, _p1MonA, _p1MonB);
         SendOutMonsters(_player2, _p2MonA, _p2MonB);
     }
-    
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            MonsterUnit monsterHere = _p1MonA.MonsterHere;
+            MonsterUnit target = _p2MonA.MonsterHere;
+            monsterHere.UseAttack(0, new MonsterUnit[]{target});
+        }
+        
+        if (Input.GetKeyDown(KeyCode.S))
+        {
+            MonsterUnit monsterHere = _p1MonA.MonsterHere;
+            MonsterUnit target = _p2MonA.MonsterHere;
+            monsterHere.UseAttack(1, new MonsterUnit[]{target});
+        }
+    }
+
     private static void SendOutMonsters(Trainer player, BattlePosition spotA, BattlePosition spotB)
     {
         spotA.SendMonster(player.team[0]);
@@ -48,7 +65,7 @@ public class Battlefield : MonoBehaviour
     {
         if (player.team.Length == 0)
         {
-            MonsterSpecies[] allSpecies = Resources.LoadAll<MonsterSpecies>("Monsters");
+            MonsterSpecies[] allSpecies = Resources.LoadAll<MonsterSpecies>("Monster Species");
             GiveRandomTeam(player, allSpecies);
         }
     }

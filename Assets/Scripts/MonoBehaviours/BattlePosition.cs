@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class BattlePosition : MonoBehaviour
 {
-    [SerializeField] private MonsterUnit monsterHere;
+    [field: SerializeField] public MonsterUnit MonsterHere { get; private set; }
     private SpriteRenderer _spriteRenderer;
 
 
@@ -17,7 +17,7 @@ public class BattlePosition : MonoBehaviour
 
     public void SendMonster(MonsterUnit monster)
     {
-        monsterHere = monster;
+        MonsterHere = monster;
         _spriteRenderer.sprite = monster.GetSpecies().Sprite;
     }
 
