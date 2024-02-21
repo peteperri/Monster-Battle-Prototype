@@ -6,27 +6,34 @@ public class Battlefield : MonoBehaviour
 {
     private Trainer _player1;
     private BattlePosition _p1MonA;
-    private BattlePosition _p1MonB;
+    private BattlePosition _p1MonB; //only used in double battles
     
     private Trainer _player2;
     private BattlePosition _p2MonA;
-    private BattlePosition _p2MonB;
+    private BattlePosition _p2MonB; //only used in double battles
+
+    private GameObject _actionPrompt;
+    private GameObject _attackTextObjects;
+    private GameObject _switchTextObjects;
 
     [SerializeField] private bool isDoubleBattle = false;
     
     private void Awake()
     {
+        
+        //initialize players
         Transform players = transform.Find("Players");
         _player1 = players.GetChild(0).GetComponent<Trainer>();
         _player2 = players.GetChild(1).GetComponent<Trainer>();
 
+        //initialize positions
         Transform positions = transform.Find("Positions");
         Transform player1Positions = positions.GetChild(0);
         Transform player2Positions = positions.GetChild(1);
-
         _p1MonA = player1Positions.GetChild(0).GetComponent<BattlePosition>();
         _p2MonA = player2Positions.GetChild(0).GetComponent<BattlePosition>();
 
+        //check for double battle, initialize those positions if necessary
         if (isDoubleBattle)
         {
             _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
