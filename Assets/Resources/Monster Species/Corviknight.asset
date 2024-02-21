@@ -23,4 +23,8 @@ MonoBehaviour:
     <Readiness>k__BackingField: 67
     <Reflex>k__BackingField: -1
   <Sprite>k__BackingField: {fileID: 21300000, guid: 4405d7f198831c24d80df18990c0a471, type: 3}
-  <LearnSet>k__BackingField: []
+  <LearnSet>k__BackingField:
+  - {fileID: 11400000, guid: 5eb6fa554f61ee047a2bf503d725f11f, type: 2}
+  - {fileID: 11400000, guid: 2aafbc5beaedd4b408fafbf91b01ddb7, type: 2}
+  - {fileID: 11400000, guid: 32c3ed15d33147240bfc10aac0fb5106, type: 2}
+  - {fileID: 11400000, guid: fcca9e466e1d6ec49a5c0dac592f59b1, type: 2}

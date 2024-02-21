@@ -1,4 +1,5 @@
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 //the battlefield class will handle the basic gameplay loop of a battle
 public class Battlefield : MonoBehaviour
@@ -10,6 +11,8 @@ public class Battlefield : MonoBehaviour
     private Trainer _player2;
     private BattlePosition _p2MonA;
     private BattlePosition _p2MonB;
+
+    [SerializeField] private bool isDoubleBattle = false;
     
     private void Awake()
     {
@@ -22,10 +25,13 @@ public class Battlefield : MonoBehaviour
         Transform player2Positions = positions.GetChild(1);
 
         _p1MonA = player1Positions.GetChild(0).GetComponent<BattlePosition>();
-        _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
-
         _p2MonA = player2Positions.GetChild(0).GetComponent<BattlePosition>();
-        _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
+
+        if (isDoubleBattle)
+        {
+            _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
+            _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
+        }
     }
 
     private void Start()
@@ -33,8 +39,18 @@ public class Battlefield : MonoBehaviour
         TeamCheck(_player1);
         TeamCheck(_player2);
 
-        SendOutMonsters(_player1, _p1MonA, _p1MonB);
-        SendOutMonsters(_player2, _p2MonA, _p2MonB);
+        if (isDoubleBattle)
+        {
+            SendOutMonsters(_player1, _p1MonA, _p1MonB);
+            SendOutMonsters(_player2, _p2MonA, _p2MonB);
+        }
+        else
+        {
+            SendOutMonsters(_player1, _p1MonA);
+            SendOutMonsters(_player2, _p2MonA);
+        }
+
+        
     }
 
     private void Update()
@@ -53,10 +69,14 @@ public class Battlefield : MonoBehaviour
             monsterHere.UseAttack(1, new MonsterUnit[]{target});
         }
     }
+    
 
-    private static void SendOutMonsters(Trainer player, BattlePosition spotA, BattlePosition spotB)
+    private static void SendOutMonsters(Trainer player, BattlePosition spotA, BattlePosition spotB = null)
     {
         spotA.SendMonster(player.team[0]);
+
+        //spotB is null if this is a single battle! spotB has a value if this is a double battle
+        if (spotB == null) return;
         spotB.SendMonster(player.team[1]);
     }
 
@@ -81,7 +101,7 @@ public class Battlefield : MonoBehaviour
             //randomTeam[i] = new MonsterUnit(randomMonster);
             
             /*TODO: remove/comment out this line and uncomment the above.
-             using random natures to ensure stat calculation is working; 
+             using random natures to ensure stat calculation is working, 
              random teams will all have neutral natures normally*/
             randomTeam[i] = new MonsterUnit(randomMonster, NatureHelper.GetRandomNature());
         }
