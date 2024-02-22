@@ -1,6 +1,7 @@
 using System;
 using AYellowpaper.SerializedCollections;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 //a monster unit is an individual, customized monster. only customizable/changeable traits are controlled by this class
@@ -16,6 +17,8 @@ public class MonsterUnit
     public Attack[] KnownAttacks { get; }
     
     public bool Fainted { get; private set; }
+
+    public BattlePosition PositionInBattle { get; set; }
 
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
     private SerializedDictionary<Stat, int> _statsBeforeModifiers;
@@ -33,6 +36,7 @@ public class MonsterUnit
         KnownAttacks = new Attack[4];
         UnitName = nickname;
         Fainted = false;
+        PositionInBattle = null;
         
         //Fainted = Random.Range(1, 3) == 1;
        
@@ -171,6 +175,8 @@ public class MonsterUnit
             Fainted = true;
             Debug.Log($"{this._species.name} has fainted!");
         }
+        
+        PositionInBattle.UpdateStatusText();
     }
 
     public void Heal(float percentage)
@@ -185,11 +191,23 @@ public class MonsterUnit
         int currentHealth = _statsAfterModifiers[Stat.Health];
         int newHealth = currentHealth + (int) healAmount;
         _statsAfterModifiers[Stat.Health] = Mathf.Clamp(newHealth, 0, newHealth);
+        
+        PositionInBattle.UpdateStatusText();
     }
 
     public int GetReadiness()
     {
         return _statsAfterModifiers[Stat.Readiness];
+    }
+
+    public int GetCurrentHealth()
+    {
+        return _statsAfterModifiers[Stat.Health];
+    }
+
+    public int GetMaxHealth()
+    {
+        return _statsBeforeModifiers[Stat.Health];
     }
 }
 

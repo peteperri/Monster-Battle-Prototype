@@ -50,7 +50,6 @@ public class Battle : MonoBehaviour
             _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
             _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
         }
-
         
         //initialize UI references 
         Transform canvas = GameObject.Find("MainCanvas").transform;
