@@ -644,13 +644,13 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: '1- {ATTACK_ONE}
+  m_text: '1- {ATTACK_1}
 
-    2- {ATTACK_TWO}
+    2- {ATTACK_2}
 
-    3- {ATTACK_THREE}
+    3- {ATTACK_3}
 
-    4- {ATTACK_FOUR}
+    4- {ATTACK_4}
 
     0-
     Forfeit (end battle)'
@@ -840,7 +840,7 @@ GameObject:
   - component: {fileID: 1198757888}
   - component: {fileID: 1198757887}
   m_Layer: 5
-  m_Name: Canvas
+  m_Name: MainCanvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -986,16 +986,16 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: '5- {MONSTER_ONE}
+  m_text: '5- {MONSTER_1}
 
-    6- {MONSTER_TWO}
+    6- {MONSTER_2}
 
-    7- {MONSTER_THREE}
+    7- {MONSTER_3}
 
-    8-
-    {MONSTER_FOUR}
+    8- {MONSTER_4}
 
-    9- {MONSTER_FIVE}'
+    9-
+    {MONSTER_5}'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
