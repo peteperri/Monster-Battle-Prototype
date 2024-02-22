@@ -154,6 +154,18 @@ public class MonsterUnit
         }
     }
 
+    public void Heal(float percentage)
+    {
+        int maxHealth = _statsBeforeModifiers[Stat.Health];
+        percentage /= 100; //turns "50%" into "0.5"
+        float healAmount = maxHealth * percentage;
+        
+        //ensure we do not heal above max HP
+        healAmount = Mathf.Clamp(healAmount, 0, maxHealth);
+
+        _statsAfterMultipliers[Stat.Health] += (int) healAmount;
+    }
+
 
 
     public static int[] CalcAllStats(BaseStats baseStats, EffortValues evs, Nature nature, int iv = 31, int level = 100)

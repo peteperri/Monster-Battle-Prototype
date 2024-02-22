@@ -9,5 +9,6 @@ public class SelfHealEffect : AttackEffect
     public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
     {
         //TODO: WRITE THIS METHOD  
+        thisMonsterUnit.Heal(healPercent);
     }
 }
