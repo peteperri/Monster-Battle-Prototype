@@ -53,7 +53,7 @@ public class Battle : MonoBehaviour
 
         
         //initialize UI references 
-        Transform canvas = FindObjectOfType<Canvas>().transform;
+        Transform canvas = GameObject.Find("MainCanvas").transform;
         _actionPrompt = canvas.GetChild(0);
         _attackTextObjects = _actionPrompt.GetChild(0);
         _switchTextObjects = _actionPrompt.GetChild(1);
@@ -86,66 +86,79 @@ public class Battle : MonoBehaviour
     private void Update()
     {
         for (int i = 0; i <= 9; i++)
-       {
-           KeyCode key = KeyCode.Keypad0 + i; // KeyCode.Keypad0 is the starting enum value for the keypad numbers
+        {
+           KeyCode key = KeyCode.Alpha0 + i; // KeyCode.Keypad0 is the starting enum value for the keypad numbers
            if (Input.GetKeyDown(key))
            {
                SelectPlayerChoice(i);
                break; // Exit the loop once a key is found and processed
            }
-       }
+        }
+    }
 
-       if (_state == BattleState.ExecutingActions)
-       {
-           PlayerAction p1Action = SelectPlayerActionType(1);
-           PlayerAction p2Action = SelectPlayerActionType(2);
-
-           //if anyone forfeits, restart the game 
-           if (p1Action == PlayerAction.Forfeit || p2Action == PlayerAction.Forfeit)
-           {
-               //TODO: make this better
-               SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-           }
+    private void ExecutePlayerActions()
+    {
+        PlayerAction p1Action = SelectPlayerActionType(1);
+        PlayerAction p2Action = SelectPlayerActionType(2);
+        
+        //executed if anyone selected forfeit
+        HandleForfeit(p1Action, p2Action);
            
-           //if they are both attacking, speed now matters.
-           else if (p1Action == PlayerAction.Attack && p2Action == PlayerAction.Attack)
-           {
-               int p1AttackIndex = _p1Choice - 1;
-               int p2AttackIndex = _p2Choice - 1;
-               
-               MonsterUnit p1Mon = _p1MonA.MonsterHere;
-               MonsterUnit p2Mon = _p2MonA.MonsterHere;
-               
-               Attack p1Attack = p1Mon.KnownAttacks[p1AttackIndex];
-               Attack p2Attack = p2Mon.KnownAttacks[p2AttackIndex];
+        //executed if both players attack
+        BothPlayersAttack(p1Action, p2Action);
+           
+           
+           
+        //resets everything at the end 
+        ShowActionPrompts(1, _p1MonA.MonsterHere);
+    }
 
-               //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
-               if (p1Attack.Priority == p2Attack.Priority)
-               {
-                   int p1Speed = _p1MonA.MonsterHere.GetReadiness();
-                   int p2Speed = _p2MonA.MonsterHere.GetReadiness();
+    private void HandleForfeit(PlayerAction p1Action, PlayerAction p2Action)
+    {
+        //if anyone forfeits, restart the game 
+        if (p1Action == PlayerAction.Forfeit || p2Action == PlayerAction.Forfeit)
+        {
+            //TODO: make this better
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+    }
 
-                   if (p1Speed > p2Speed)
-                   {
-                       ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
-                   }
-                   else if (p1Speed < p2Speed)
-                   {
-                       ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex);
-                   }
+    private void BothPlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
+    {
+        //if they are both attacking, speed now matters.
+        if (p1Action == PlayerAction.Attack && p2Action == PlayerAction.Attack)
+        {
+            int p1AttackIndex = _p1Choice - 1;
+            int p2AttackIndex = _p2Choice - 1;
+               
+            MonsterUnit p1Mon = _p1MonA.MonsterHere;
+            MonsterUnit p2Mon = _p2MonA.MonsterHere;
+               
+            Attack p1Attack = p1Mon.KnownAttacks[p1AttackIndex];
+            Attack p2Attack = p2Mon.KnownAttacks[p2AttackIndex];
+
+            //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
+            if (p1Attack.Priority == p2Attack.Priority)
+            {
+                int p1Speed = _p1MonA.MonsterHere.GetReadiness();
+                int p2Speed = _p2MonA.MonsterHere.GetReadiness();
+
+                if (p1Speed > p2Speed)
+                {
+                    ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
+                }
+                else if (p1Speed < p2Speed)
+                {
+                    ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex);
+                }
                    
-                   //speed tie! whoever attacks first is RANDOM!
-                   else
-                   {
-                       SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
-                   }
-               }
-
-               /*MonsterUnit monsterHere = _p1MonA.MonsterHere;
-               MonsterUnit target = _p2MonA.MonsterHere;
-               monsterHere.UseAttack(attackIndex, new MonsterUnit[]{target});*/
-           }
-       }
+                //speed tie! whoever attacks first is RANDOM!
+                else
+                {
+                    SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
+                }
+            }
+        }
     }
 
     private void ActuallyAttack(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex)
@@ -156,6 +169,8 @@ public class Battle : MonoBehaviour
         {
             second.UseAttack(secondAttackIndex, new[]{first});
         }
+
+        _state = BattleState.WaitingOnPlayer1Choice;
     }
 
     private void SpeedTieAttack(MonsterUnit p1, int p1Index, MonsterUnit p2, int p2Index)
@@ -197,24 +212,24 @@ public class Battle : MonoBehaviour
 
     private void SelectPlayerChoice(int buttonPressed)
     {
+        Debug.Log($"Pressed {buttonPressed}");
         if (_state == BattleState.WaitingOnPlayer1Choice)
         {
             _p1Choice = buttonPressed;
             _state = BattleState.WaitingOnPlayer2Choice;
+            ShowActionPrompts(2, _p2MonA.MonsterHere);
         }
         else if (_state == BattleState.WaitingOnPlayer2Choice)
         {
             _p2Choice = buttonPressed;
             _state = BattleState.ExecutingActions;
+            ExecutePlayerActions();
         }
     }
 
-    //TODO: Lots of repeating logic. Worth refactoring into more methods if there is time 
     //temp UI solution for prototyping purposes
     private void ShowActionPrompts(int playerNum, MonsterUnit monsterBattling)
     {
-        
-        
         _actionPrompt.gameObject.SetActive(false);
         _attackOptionsText.gameObject.SetActive(false);
         _switchOptionsText.gameObject.SetActive(false);
@@ -224,11 +239,16 @@ public class Battle : MonoBehaviour
         UpdateSwitchText(playerNum, monsterBattling);
     }
 
+    
+    //TODO: refactor all three "update text" methods, as they contain a lot of repeated logic.
     private void UpdatePromptText(int playerNum, MonsterUnit monsterBattling)
     {
-        //What will {PLAYER}'s {MONSTER} do?
-        string playerText = "Player " + playerNum;
+        //reset the options text to the default, so we can replace stuff again
+        
         const string defaultActionPromptText = "What will {PLAYER}'s {MONSTER} do?";
+        _actionPromptText.text = defaultActionPromptText;
+        
+        string playerText = "Player " + playerNum;
         string newActionPromptText = defaultActionPromptText.Replace("{PLAYER}", playerText);
         string monsterName = monsterBattling.UnitName;
         newActionPromptText = newActionPromptText.Replace("{MONSTER}", monsterName);
@@ -238,7 +258,10 @@ public class Battle : MonoBehaviour
     
     private void UpdateAttackText(MonsterUnit monsterBattling)
     {
-        //1- {ATTACK_1}\n2- {ATTACK_2}\n3- {ATTACK_3}\n4- {ATTACK_4}\n0- Forfeit (end battle)
+        //reset the options text to the default, so we can replace stuff again
+        const string defaultAttackPromptText = "1- {ATTACK_1}\n2- {ATTACK_2}\n3- {ATTACK_3}\n4- {ATTACK_4}\n0- Forfeit (end battle)";
+        _attackOptionsText.text = defaultAttackPromptText;
+        
         const int moveCount = 4; //a monster should only have 4 moves... for now!
         string replaceMeTemplate = "{ATTACK_";
         string newAttackPromptText = _attackOptionsText.text;
@@ -254,7 +277,10 @@ public class Battle : MonoBehaviour
 
     private void UpdateSwitchText(int playerNum, MonsterUnit monsterBattling)
     {
-        //5- {MONSTER_1}\n6- {MONSTER_2}\n7- {MONSTER_3}\n8- {MONSTER_4}\n9- {MONSTER_5}
+        //reset the options text to the default, so we can replace stuff again
+        const string defaultSwitchPromptText = "5- {MONSTER_1}\n6- {MONSTER_2}\n7- {MONSTER_3}\n8- {MONSTER_4}\n9- {MONSTER_5}";
+        _switchOptionsText.text = defaultSwitchPromptText;
+        
         string replaceMeTemplate = "{MONSTER_";
         Trainer trainer = playerNum == 1 ? _player1 : _player2;
         MonsterUnit[] team = trainer.team;

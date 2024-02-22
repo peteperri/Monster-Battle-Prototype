@@ -21,4 +21,4 @@ MonoBehaviour:
   <Category>k__BackingField: 1
   <MakesContact>k__BackingField: 0
   <SecondaryEffect>k__BackingField:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 3bc4e5f4e2da5fb47899f078b9dc246c, type: 2}

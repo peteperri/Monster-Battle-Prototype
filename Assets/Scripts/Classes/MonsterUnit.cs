@@ -182,7 +182,9 @@ public class MonsterUnit
         //ensure we do not heal above max HP
         healAmount = Mathf.Clamp(healAmount, 0, maxHealth);
 
-        _statsAfterModifiers[Stat.Health] += (int) healAmount;
+        int currentHealth = _statsAfterModifiers[Stat.Health];
+        int newHealth = currentHealth + (int) healAmount;
+        _statsAfterModifiers[Stat.Health] = Mathf.Clamp(newHealth, 0, newHealth);
     }
 
     public int GetReadiness()
