@@ -1,6 +1,7 @@
 using System;
 using AYellowpaper.SerializedCollections;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 //a monster unit is an individual, customized monster. only customizable/changeable traits are controlled by this class
 [Serializable]
@@ -10,28 +11,36 @@ public class MonsterUnit
     private EffortValues _statInvestments;
     private Nature _nature;
 
-    private Attack[] _knownAttacks;
+    //by default, a monster unit's name will just be it's species name. however, nicknames are a feature that i want to support once customization is implemented
+    public string UnitName { get; }
+    public Attack[] KnownAttacks { get; }
     
+    public bool Fainted { get; private set; }
+
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
     private SerializedDictionary<Stat, int> _statsBeforeModifiers;
-    private SerializedDictionary<Stat, int> _statsAfterMultipliers;
+    private SerializedDictionary<Stat, int> _statsAfterModifiers;
     private SerializedDictionary<Stat, int> _statModifierStages;
 
-    public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature)
+    public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature, string nickname)
     {
         _species = species;
         _statInvestments = evs;
         _nature = nature;
         _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
-        _statsAfterMultipliers = new SerializedDictionary<Stat, int>();
+        _statsAfterModifiers = new SerializedDictionary<Stat, int>();
         _statModifierStages = new SerializedDictionary<Stat, int>();
-        _knownAttacks = new Attack[4];
+        KnownAttacks = new Attack[4];
+        UnitName = nickname;
+        Fainted = false;
         
-        //TODO: COMMENT OUT THIS LOOP
-        //currently gives every mon the first four moves in their learnset
-        for (int i = 0; i < _knownAttacks.Length && i < _species.LearnSet.Length; i++)
+        //Fainted = Random.Range(1, 3) == 1;
+       
+        
+        //currently gives every mon the first four moves in their learnset; needs to be removed if customization is implemented
+        for (int i = 0; i < KnownAttacks.Length && i < _species.LearnSet.Length; i++)
         {
-            _knownAttacks[i] = _species.LearnSet[i];
+            KnownAttacks[i] = _species.LearnSet[i];
         }
 
         ComputeStartingStats();
@@ -39,9 +48,13 @@ public class MonsterUnit
     
     //chained constructors
     public MonsterUnit(MonsterSpecies species) 
-        : this(species, new EffortValues(), Nature.Hardy) {}
+        : this(species, new EffortValues(), Nature.Hardy, species.GetName()) {}
+    
     public MonsterUnit(MonsterSpecies species, Nature nature) 
-        : this(species, new EffortValues(), nature) {}
+        : this(species, new EffortValues(), nature, species.GetName()) {}
+
+    public MonsterUnit(MonsterSpecies species, EffortValues evs, Nature nature)
+        : this(species, evs, nature, species.GetName()) {}
 
     public void ComputeStartingStats()
     {
@@ -53,7 +66,7 @@ public class MonsterUnit
         {
             Stat statName = (Stat)statNames.GetValue(i);
             _statsBeforeModifiers.Add(statName, calculatedStats[i]);
-            _statsAfterMultipliers.Add(statName, calculatedStats[i]);
+            _statsAfterModifiers.Add(statName, calculatedStats[i]);
             _statModifierStages.Add(statName, 0);
         }
     }
@@ -80,7 +93,7 @@ public class MonsterUnit
             //Debug.Log($"{multiplierNumerator}/{multiplierDenominator}");
             
             float newStat = _statsBeforeModifiers[stat] * ((float) multiplierNumerator / multiplierDenominator);
-            _statsAfterMultipliers[stat] = (int) newStat;
+            _statsAfterModifiers[stat] = (int) newStat;
         }
     }
 
@@ -109,29 +122,34 @@ public class MonsterUnit
 
     public void UseAttack(int attackIndex, MonsterUnit[] targets)
     {
-        if (attackIndex > _knownAttacks.Length || attackIndex < 0)
+        if (attackIndex > KnownAttacks.Length || attackIndex < 0)
         {
+            Debug.Log($"{UnitName} tried to use a move outside of its range.");
             return;
         }
-        
-        
 
-        Attack attack = _knownAttacks[attackIndex];
+        if (Fainted)
+        {
+            Debug.Log($"{UnitName} has fainted and cannot attack!");
+            return;
+        }
+
+        Attack attack = KnownAttacks[attackIndex];
         foreach (MonsterUnit target in targets)
         {
             Debug.Log($"{_species.name} is using {attack.name} on {target._species.name}!");
             int damageToDeal = 0;
             if (attack.Category == AttackCategory.Physical)
             {
-                float attackStat = this._statsAfterMultipliers[Stat.Strength];
-                float defenseStat = target._statsAfterMultipliers[Stat.Defense];
+                float attackStat = this._statsAfterModifiers[Stat.Strength];
+                float defenseStat = target._statsAfterModifiers[Stat.Defense];
                 damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower);
                 target.TakeDamage(damageToDeal);
             }
             else if (attack.Category == AttackCategory.Special)
             {
-                float attackStat = this._statsAfterMultipliers[Stat.Intelligence];
-                float defenseStat = target._statsAfterMultipliers[Stat.Resilience];
+                float attackStat = this._statsAfterModifiers[Stat.Intelligence];
+                float defenseStat = target._statsAfterModifiers[Stat.Resilience];
                 damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower);
                 target.TakeDamage(damageToDeal);
             }
@@ -144,12 +162,13 @@ public class MonsterUnit
     
     public void TakeDamage(int amount)
     {
-        int currentHealth = _statsAfterMultipliers[Stat.Health];
+        int currentHealth = _statsAfterModifiers[Stat.Health];
         currentHealth -= amount;
         currentHealth = Mathf.Clamp(currentHealth, 0, _statsBeforeModifiers[Stat.Health]);
-        _statsAfterMultipliers[Stat.Health] = currentHealth;
+        _statsAfterModifiers[Stat.Health] = currentHealth;
         if (currentHealth <= 0)
         {
+            Fainted = true;
             Debug.Log($"{this._species.name} has fainted!");
         }
     }
@@ -163,7 +182,12 @@ public class MonsterUnit
         //ensure we do not heal above max HP
         healAmount = Mathf.Clamp(healAmount, 0, maxHealth);
 
-        _statsAfterMultipliers[Stat.Health] += (int) healAmount;
+        _statsAfterModifiers[Stat.Health] += (int) healAmount;
+    }
+
+    public int GetReadiness()
+    {
+        return _statsAfterModifiers[Stat.Readiness];
     }
 }
 

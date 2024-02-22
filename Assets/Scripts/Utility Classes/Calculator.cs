@@ -45,4 +45,5 @@ public static class Calculator
         float rawDamage = (levelFactor * statFactor) / 50 + 2;
         return Mathf.RoundToInt(rawDamage * multipliers);
     }
+    
 }

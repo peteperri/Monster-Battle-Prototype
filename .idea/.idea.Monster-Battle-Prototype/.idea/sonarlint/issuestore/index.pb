@@ -1,6 +1,4 @@
 
-b
-2Assets/Scripts/ScriptableObjects/MonsterSpecies.cs,9\4\94e8becfb8bd42332c8efc22cdd9805417856803
 n
 >Assets/Scripts/ScriptableObjects/AttackEffects/AttackEffect.cs,6\4\64bfff16089951f7a9594f0a505eb7739af3e317
 L
