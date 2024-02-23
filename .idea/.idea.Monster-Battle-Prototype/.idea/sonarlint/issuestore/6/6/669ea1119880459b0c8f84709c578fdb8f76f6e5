@@ -1,0 +1,10 @@
+
+…csharpsquid:S1450"aRemove the field '_attackTextObjects' and declare it as a local variable in the relevant methods.(î¹ ¦8ÛÀĞİ1
+…csharpsquid:S1450"aRemove the field '_switchTextObjects' and declare it as a local variable in the relevant methods.(ÎüÚ™8ÛÀĞİ1
+]csharpsquid:S1481„"3Remove the unused local variable 'monsterBattling'.(Ãş¼êúÿÿÿÿ8“›˜¸İ1
+Hcsharpsquid:S125±"Remove this commented out code.(¨Ïä‹üÿÿÿÿ8ù–¡¹İ1
+Xcsharpsquid:S1135{"4Complete the task associated to this 'TODO' comment.(’Öˆë8ÃØİ1
+^csharpsquid:S1135Å"4Complete the task associated to this 'TODO' comment.(ûÇ”¡øÿÿÿÿ8Ş´˜¸İ1
+Ycsharpsquid:S1135ƒ"4Complete the task associated to this 'TODO' comment.(ÿĞæ¾8Ş´˜¸İ1
+Ycsharpsquid:S1135¢"4Complete the task associated to this 'TODO' comment.(Ìá¿æ8Ş´˜¸İ1
+^csharpsquid:S1135³"4Complete the task associated to this 'TODO' comment.(Ôœ¯ğøÿÿÿÿ8ú–¡¹İ1

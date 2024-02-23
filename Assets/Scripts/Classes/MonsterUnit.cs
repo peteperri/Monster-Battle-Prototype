@@ -124,6 +124,9 @@ public class MonsterUnit
 
     }
 
+    //this method takes in an array of targets for future double-battle functionality
+    //at this time, this array will only ever have a size of one, because 
+    //double battles are not yet implemented.
     public void UseAttack(int attackIndex, MonsterUnit[] targets)
     {
         if (attackIndex > KnownAttacks.Length || attackIndex < 0)

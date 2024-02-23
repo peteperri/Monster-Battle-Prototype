@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 //the battlefield class will handle the basic gameplay loop of a battle
@@ -8,11 +9,11 @@ public class Battle : MonoBehaviour
 {
     private Trainer _player1;
     private BattlePosition _p1MonA;
-    private BattlePosition _p1MonB; //only used in double battles
+    private BattlePosition _p1MonB; //only used in double battles, which are not yet implemented. 
     
     private Trainer _player2;
     private BattlePosition _p2MonA;
-    private BattlePosition _p2MonB; //only used in double battles
+    private BattlePosition _p2MonB; //only used in double battles, which are not yet implemented.
 
     private Transform _actionPrompt;
     private Transform _attackTextObjects;
@@ -97,17 +98,19 @@ public class Battle : MonoBehaviour
 
     private void ExecutePlayerActions()
     {
-        PlayerAction p1Action = SelectPlayerActionType(1);
-        PlayerAction p2Action = SelectPlayerActionType(2);
+        PlayerAction p1Action = SelectPlayerActionType(_p1Choice);
+        PlayerAction p2Action = SelectPlayerActionType(_p2Choice);
         
         //executed if anyone selected forfeit
         HandleForfeit(p1Action, p2Action);
-           
+
+        //handle switching for both players
+        HandleSwitch(p1Action, _p1Choice, 1);
+        HandleSwitch(p2Action, _p2Choice, 2);
+        
         //executed if both players attack
-        BothPlayersAttack(p1Action, p2Action);
-           
-           
-           
+        PlayersAttack(p1Action, p2Action);
+        
         //resets everything at the end 
         ShowActionPrompts(1, _p1MonA.MonsterHere);
     }
@@ -122,20 +125,39 @@ public class Battle : MonoBehaviour
         }
     }
 
-    private void BothPlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
+    private void HandleSwitch(PlayerAction playerAction, int playerChoice, int playerNum)
     {
+        Trainer player = playerNum == 1 ? _player1 : _player2;
+        BattlePosition position =  playerNum == 1 ? _p1MonA : _p2MonA;
+        MonsterUnit monsterBattling = position.MonsterHere;
+        
+        if (playerAction == PlayerAction.Switch)
+        {
+            //5 = index 0 
+            //6 = index 1
+            //7 = index 2
+            //8 = index 3
+            //9 = index 4
+
+            int switchIndex = playerChoice - 5;
+            position.SwitchMonster(player.team[switchIndex], player);
+        }
+    }
+
+    private void PlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
+    {
+        MonsterUnit p1Mon = _p1MonA.MonsterHere;
+        MonsterUnit p2Mon = _p2MonA.MonsterHere;
+        
         //if they are both attacking, speed now matters.
         if (p1Action == PlayerAction.Attack && p2Action == PlayerAction.Attack)
         {
             int p1AttackIndex = _p1Choice - 1;
             int p2AttackIndex = _p2Choice - 1;
-               
-            MonsterUnit p1Mon = _p1MonA.MonsterHere;
-            MonsterUnit p2Mon = _p2MonA.MonsterHere;
-               
+            
             Attack p1Attack = p1Mon.KnownAttacks[p1AttackIndex];
             Attack p2Attack = p2Mon.KnownAttacks[p2AttackIndex];
-
+            
             //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
             if (p1Attack.Priority == p2Attack.Priority)
             {
@@ -157,7 +179,22 @@ public class Battle : MonoBehaviour
                     SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
                 }
             }
+            return;
         }
+        
+        //if only one is attacking, just tell it to attack whatever is in front of it 
+        if (p1Action == PlayerAction.Attack)
+        {
+            int p1AttackIndex = _p1Choice - 1;
+            p1Mon.UseAttack(p1AttackIndex, new[]{p2Mon});
+        }
+
+        if (p2Action == PlayerAction.Attack)
+        {
+            int p2AttackIndex = _p2Choice - 1;
+            p2Mon.UseAttack(p2AttackIndex, new[]{p1Mon});
+        }
+        
     }
 
     private void ActuallyAttack(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex)
@@ -208,6 +245,7 @@ public class Battle : MonoBehaviour
         //THIS SHOULD NEVER HAPPEN
         return PlayerAction.Empty;
     }
+    
 
     private void SelectPlayerChoice(int buttonPressed)
     {
@@ -215,14 +253,59 @@ public class Battle : MonoBehaviour
         if (_state == BattleState.WaitingOnPlayer1Choice)
         {
             _p1Choice = buttonPressed;
+            if (ChoiceInvalid(1, _p1Choice))
+            {
+                Debug.Log("Invalid choice from player 1!");
+                _p1Choice = -1;
+                return;
+            }
+            
+            
             _state = BattleState.WaitingOnPlayer2Choice;
             ShowActionPrompts(2, _p2MonA.MonsterHere);
         }
         else if (_state == BattleState.WaitingOnPlayer2Choice)
         {
             _p2Choice = buttonPressed;
+            if (ChoiceInvalid(2, _p2Choice))
+            {
+                Debug.Log("Invalid choice from player 2!");
+                _p2Choice = -1;
+                return;
+            }
+            
             _state = BattleState.ExecutingActions;
             ExecutePlayerActions();
+        }
+    }
+
+    private bool ChoiceInvalid(int playerNum, int choice)
+    {
+        Trainer player = playerNum == 1 ? _player1 : _player2;
+        BattlePosition position =  playerNum == 1 ? _p1MonA : _p2MonA;
+        MonsterUnit monsterBattling = position.MonsterHere;
+        
+        switch (choice)
+        {
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+                int moveIndex = choice - 1;
+                //if the monster doesn't have a move that corresponds to the player choice, then their choice was invalid.
+                if (monsterBattling.KnownAttacks[moveIndex] == null) return true;
+                return false;
+            case 5:
+            case 6:
+            case 7: 
+            case 8: 
+            case 9:
+                int switchIndex = choice - 5;
+                //if they don't have a mon there in their party there, or it is fainted, then this choice is invalid
+                if (player.team[switchIndex] == null || player.team[switchIndex].Fainted) return true;
+                return false;
+            default:
+                return true;
         }
     }
 
@@ -340,6 +423,13 @@ public class Battle : MonoBehaviour
         {
             int randIndex = Random.Range(0, allSpecies.Length - 1);
             MonsterSpecies randomMonster = allSpecies[randIndex];
+
+            while (TeamContainsSpecies(randomTeam, randomMonster))
+            {
+                randIndex = Random.Range(0, allSpecies.Length - 1);
+                randomMonster = allSpecies[randIndex];
+            }
+            
             //randomTeam[i] = new MonsterUnit(randomMonster);
             
             /*TODO: remove/comment out this line and uncomment the above.
@@ -348,5 +438,20 @@ public class Battle : MonoBehaviour
             randomTeam[i] = new MonsterUnit(randomMonster, NatureHelper.GetRandomNature());
         }
         player.team = randomTeam;
+    }
+
+    private static bool TeamContainsSpecies(MonsterUnit[] team, MonsterSpecies species)
+    {
+        for (int i = 0; i < team.Length; i++)
+        {
+            if (team[i] == null) continue;
+
+            if (team[i].GetSpecies().GetName() == species.GetName())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

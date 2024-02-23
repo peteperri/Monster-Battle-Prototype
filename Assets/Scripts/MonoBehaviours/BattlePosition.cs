@@ -1,9 +1,10 @@
+using System;
 using TMPro;
 using UnityEngine;
 
 public class BattlePosition : MonoBehaviour
 {
-    [field: SerializeField] public MonsterUnit MonsterHere { get; private set; }
+    [field: SerializeField] public MonsterUnit MonsterHere { get; private set; } 
     private SpriteRenderer _spriteRenderer;
     
     private Transform _statusTextParent;
@@ -19,25 +20,41 @@ public class BattlePosition : MonoBehaviour
         {
             gameObject.AddComponent<SpriteRenderer>();
         }
+
+        MonsterHere = null;
     }
 
-    public void SendMonster(MonsterUnit monster)
+    public void SwitchMonster(MonsterUnit newMonster, Trainer trainer)
     {
-        //if there is a monster here already...
+        
+        int indexOfMonsterSwitchingOut = Array.IndexOf(trainer.team, MonsterHere);
+        
+        //swap their positions in the array, so that the monster getting sent out is now at the front of the array. 
+        MonsterUnit temp = trainer.team[0];
+        trainer.team[0] = trainer.team[indexOfMonsterSwitchingOut];
+        trainer.team[indexOfMonsterSwitchingOut] = temp;
+        
+        SendMonster(newMonster);
+    }
+
+    public void SendMonster(MonsterUnit newMonster)
+    {
+
+        //tell the monster that's here right now that it isn't, assuming it exists.
         if (MonsterHere != null)
         {
-            //tell the monster that's here right now that it isn't.
             MonsterHere.PositionInBattle = null;
-        }
 
+        }
+        
         //set the monster here to the new monster, passed in by the parameter
-        MonsterHere = monster;
+        MonsterHere = newMonster;
         
         //set that monster's position in battle to this battle position
-        monster.PositionInBattle = this;
+        newMonster.PositionInBattle = this;
         
         //update sprite 
-        _spriteRenderer.sprite = monster.GetSpecies().Sprite;
+        _spriteRenderer.sprite = newMonster.GetSpecies().Sprite;
         
         UpdateStatusText();
     }
