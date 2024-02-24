@@ -10,5 +10,6 @@ public class SelfHealEffect : AttackEffect
     {
         //TODO: WRITE THIS METHOD  
         thisMonsterUnit.Heal(healPercent);
+        Battle.StaticMessage(Battle.GetCurrentMessage() + "\nIt restored HP!");
     }
 }

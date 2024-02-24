@@ -15,7 +15,11 @@ public class OpponentStatModifierEffect : AttackEffect
         int rand = Random.Range(1, 100);
         if (rand <= percentageChance)
         {
+            //if the stat drop doesn't ALWAYS happen, say "How unlucky!"
+            string luckMessage = percentageChance == 100 ? "" : " How unlucky!";
+
             target.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
+            Battle.StaticMessage(Battle.GetCurrentMessage() + $"\n{target.UnitName}'s {statToEffect} dropped to {target.GetStat(statToEffect)}!" + luckMessage);
         }
     }
 }

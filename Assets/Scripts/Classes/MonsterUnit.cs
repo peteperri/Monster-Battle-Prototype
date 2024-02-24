@@ -33,6 +33,7 @@ public class MonsterUnit
         _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
         _statsAfterModifiers = new SerializedDictionary<Stat, int>();
         _statModifierStages = new SerializedDictionary<Stat, int>();
+        
         KnownAttacks = new Attack[4];
         UnitName = nickname;
         Fainted = false;
@@ -145,28 +146,58 @@ public class MonsterUnit
         foreach (MonsterUnit target in targets)
         {
             Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
+            Battle.StaticMessage($"{_species.name} used {attack.name}!");
             int damageToDeal = 0;
-            if (attack.Category == AttackCategory.Physical)
+
+            MonsterSpecies targetSpecies = target.GetSpecies();
+            
+            float typingMultiplier = targetSpecies.GetTypeMultiplier(attack.Type);
+            if (typingMultiplier == 0)
             {
-                float attackStat = this._statsAfterModifiers[Stat.Strength];
-                float defenseStat = target._statsAfterModifiers[Stat.Defense];
-                damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower);
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... But the target was immune!");
+                continue;
+            }
+            else if (typingMultiplier < 1)
+            {
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... It's not very effective.");
+            }
+            else if (typingMultiplier > 1)
+            {
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... It was super effective!");
+            }
+
+            if (attack.Category != AttackCategory.Status)
+            {
+                float attackStat;
+                float defenseStat;
+                
+                if (attack.Category == AttackCategory.Physical)
+                {
+                    attackStat = this._statsAfterModifiers[Stat.Strength];
+                    defenseStat = target._statsAfterModifiers[Stat.Defense];
+                }
+                else
+                {
+                    attackStat = this._statsAfterModifiers[Stat.Intelligence];
+                    defenseStat = target._statsAfterModifiers[Stat.Resilience];
+                }
+
+                float stabMultiplier = IsStab(attack) ? 1.5f : 1;
+                Debug.Log($"Stab multiplier? {stabMultiplier}");
+                Debug.Log($"Typing multiplier? {typingMultiplier}");
+                float allMultipliers = typingMultiplier * stabMultiplier;
+                
+                damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower, allMultipliers);
                 target.TakeDamage(damageToDeal);
             }
-            else if (attack.Category == AttackCategory.Special)
-            {
-                float attackStat = this._statsAfterModifiers[Stat.Intelligence];
-                float defenseStat = target._statsAfterModifiers[Stat.Resilience];
-                damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower);
-                target.TakeDamage(damageToDeal);
-            }
+            
             for (int i = 0; i < attack.SecondaryEffect.Length; i++)
             {
                 attack.SecondaryEffect[i].ExecuteSecondaryEffect(this, target);
             }
         }
     }
-    
+
     public void TakeDamage(int amount)
     {
         int currentHealth = _statsAfterModifiers[Stat.Health];
@@ -176,6 +207,7 @@ public class MonsterUnit
         if (currentHealth <= 0)
         {
             Fainted = true;
+            Battle.StaticMessage($"{Battle.GetCurrentMessage()}\n{this._species.name} has fainted!");
             Debug.Log($"{this._species.name} has fainted!");
         }
 
@@ -193,24 +225,31 @@ public class MonsterUnit
 
         int currentHealth = _statsAfterModifiers[Stat.Health];
         int newHealth = currentHealth + (int) healAmount;
-        _statsAfterModifiers[Stat.Health] = Mathf.Clamp(newHealth, 0, newHealth);
+
+        if (newHealth > maxHealth)
+        {
+            newHealth = maxHealth;
+        }
+        _statsAfterModifiers[Stat.Health] = newHealth;
         
         PositionInBattle.UpdateStatus();
-    }
-
-    public int GetReadiness()
-    {
-        return _statsAfterModifiers[Stat.Readiness];
-    }
-
-    public int GetCurrentHealth()
-    {
-        return _statsAfterModifiers[Stat.Health];
     }
 
     public int GetMaxHealth()
     {
         return _statsBeforeModifiers[Stat.Health];
+    }
+
+    public int GetStat(Stat stat)
+    {
+        return _statsAfterModifiers[stat];
+    }
+
+    private bool IsStab(Attack attack)
+    { 
+        ElementalType[] myTyping = _species.GetTyping();
+        ElementalType attackType = attack.Type;
+        return attackType == myTyping[0] || attackType == myTyping[1];
     }
 }
 

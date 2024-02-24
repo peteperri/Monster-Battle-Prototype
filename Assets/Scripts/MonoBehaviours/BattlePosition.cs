@@ -65,6 +65,8 @@ public class BattlePosition : MonoBehaviour
         //update sprite 
         _spriteRenderer.sprite = newMonster.GetSpecies().Sprite;
         
+        Battle.StaticMessage($"{MonsterHere.UnitName} has entered the battlefield!");
+        
         UpdateStatusText();
     }
 
@@ -86,7 +88,7 @@ public class BattlePosition : MonoBehaviour
 
     private void UpdateHealthText()
     {
-        _healthText.text = $"Health: {MonsterHere.GetCurrentHealth()}/{MonsterHere.GetMaxHealth()}";
+        _healthText.text = $"Health: {MonsterHere.GetStat(Stat.Health)}/{MonsterHere.GetMaxHealth()}";
     }
 
 }

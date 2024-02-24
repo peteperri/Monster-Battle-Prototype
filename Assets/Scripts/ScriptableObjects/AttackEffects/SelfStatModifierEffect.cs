@@ -11,5 +11,14 @@ public class SelfStatModifierEffect : AttackEffect
     {
         if (statToEffect == Stat.Health) return;
         thisMonsterUnit.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
+
+        if (stagesToAddOrRemove > 0)
+        {
+            Battle.StaticMessage(Battle.GetCurrentMessage() + $"\nIt raised its {statToEffect} to {thisMonsterUnit.GetStat(statToEffect)}!");
+        }
+        else if (stagesToAddOrRemove < 0)
+        {
+            Battle.StaticMessage(Battle.GetCurrentMessage() + $"\nIts {statToEffect} dropped to {thisMonsterUnit.GetStat(statToEffect)}!");
+        }
     }
 }

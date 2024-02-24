@@ -26,6 +26,7 @@ public class Battle : MonoBehaviour
     private TextMeshProUGUI _attackOptionsText;
     private TextMeshProUGUI _switchOptionsText;
     private TextMeshProUGUI _forcedSwitchOptionsText;
+    private TextMeshProUGUI _infoText;
 
     private BattleState _state;
     private int _p1Choice = -1;
@@ -70,6 +71,9 @@ public class Battle : MonoBehaviour
         _attackOptionsText = _attackTextObjects.GetChild(1).GetComponent<TextMeshProUGUI>();
         _switchOptionsText = _switchTextObjects.GetChild(1).GetComponent<TextMeshProUGUI>();
         _forcedSwitchOptionsText = canvas.GetChild(1).GetComponent<TextMeshProUGUI>();
+        _infoText = canvas.GetChild(2).GetComponent<TextMeshProUGUI>();
+        
+        SFX.Play(SoundEffect.Confirm);
     }
 
     private void Start()
@@ -114,6 +118,7 @@ public class Battle : MonoBehaviour
         PlayerAction p2Action = SelectPlayerActionType(_p2Choice);
         
         Debug.Log("Actions Selected. Press Space to see them play out!");
+        Message("Actions Selected. Press Space to see them play out!");
         yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         
         //executed if anyone selected forfeit
@@ -162,11 +167,13 @@ public class Battle : MonoBehaviour
         if (playerNum == 1)
         {
             Debug.Log("Player 1 is Pivoting");
+            Message(_infoText.text + "\nPlayer 1 is Switching!");
             _state = BattleState.Player1MidTurnSwitch;
         }
         else if (playerNum == 2)
         {
             Debug.Log("Player 2 is Pivoting");
+            Message(_infoText.text + "\nPlayer 2 is Switching!");
             _state = BattleState.Player2MidTurnSwitch;
         }
     }
@@ -176,12 +183,12 @@ public class Battle : MonoBehaviour
         //Debug.Log("HandlePivot");
         if (_state == BattleState.Player1MidTurnSwitch)
         {
-            Debug.Log("HandlePivot 1");
+            //Debug.Log("HandlePivot 1");
             UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
         }
         else if (_state == BattleState.Player2MidTurnSwitch)
         {
-            Debug.Log("HandlePivot 2");
+            //Debug.Log("HandlePivot 2");
             UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
         }
         yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
@@ -208,6 +215,7 @@ public class Battle : MonoBehaviour
             int switchIndex = playerChoice - 4;
             yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
+            Message($"Player {playerNum} is switching to {player.team[switchIndex].UnitName}");
             position.SwitchMonster(player.team[switchIndex]);
             yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
@@ -230,8 +238,8 @@ public class Battle : MonoBehaviour
             //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
             if (p1Attack.Priority == p2Attack.Priority)
             {
-                int p1Speed = _p1MonA.MonsterHere.GetReadiness();
-                int p2Speed = _p2MonA.MonsterHere.GetReadiness();
+                int p1Speed = _p1MonA.MonsterHere.GetStat(Stat.Readiness);
+                int p2Speed = _p2MonA.MonsterHere.GetStat(Stat.Readiness);
 
                 if (p1Speed > p2Speed)
                 {
@@ -434,13 +442,21 @@ public class Battle : MonoBehaviour
             case 4:
                 
                 //if this situation is a mid-turn switch (pivot move, faint), then choosing a move does nothing.
-                if (_state == BattleState.Player1MidTurnSwitch ||
-                    _state == BattleState.Player2MidTurnSwitch) return true;
-                
+                if (_state == BattleState.Player1MidTurnSwitch || _state == BattleState.Player2MidTurnSwitch)
+                {
+                    SFX.Play(SoundEffect.Deny);
+                    return true;
+                }
                 
                 int moveIndex = choice - 1;
                 //if the monster doesn't have a move that corresponds to the player choice, then their choice was invalid.
-                if (monsterBattling.KnownAttacks[moveIndex] == null) return true;
+                if (monsterBattling.KnownAttacks[moveIndex] == null) 
+                {
+                    SFX.Play(SoundEffect.Deny);
+                    return true;
+                }
+                
+                SFX.Play(SoundEffect.Confirm);
                 return false;
             
             case 5:
@@ -450,12 +466,19 @@ public class Battle : MonoBehaviour
             case 9:
                 int switchIndex = choice - 4;
                 //if they don't have a mon there in their party there, or it is fainted, then this choice is invalid
-                if (player.team[switchIndex] == null || player.team[switchIndex].Fainted) return true;
+                if (player.team[switchIndex] == null || player.team[switchIndex].Fainted)
+                {
+                    SFX.Play(SoundEffect.Deny);
+                    return true;
+                }
+                SFX.Play(SoundEffect.Confirm);
                 return false;
             case 0:
                 //forfeit 
+                SFX.Play(SoundEffect.Confirm);
                 return false;
             default:
+                SFX.Play(SoundEffect.Deny);
                 return true;
         }
     }
@@ -463,7 +486,7 @@ public class Battle : MonoBehaviour
     //temp UI solution for prototyping purposes
     private void ShowActionPrompts(int playerNum, MonsterUnit monsterBattling)
     {
-        
+        _infoText.text = "";
         HideActionPrompts();
         UpdatePromptText(playerNum, monsterBattling);
         UpdateAttackText(monsterBattling);
@@ -554,6 +577,23 @@ public class Battle : MonoBehaviour
 
         switchOptionsText.text = newSwitchPromptText;
         switchOptionsText.gameObject.SetActive(true);
+    }
+    
+    public static void StaticMessage(string message)
+    {
+        Battle theBattle = FindObjectOfType<Battle>();
+        theBattle.Message(message);
+    }
+
+    public static string GetCurrentMessage()
+    {
+        Battle theBattle = FindObjectOfType<Battle>();
+        return theBattle._infoText.text;
+    }
+
+    private void Message(string message)
+    {
+        _infoText.text = message;
     }
 
 

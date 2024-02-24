@@ -26,6 +26,38 @@ public class MonsterSpecies : ScriptableObject
         return typing;
     }
 
+    public float GetTypeMultiplier(ElementalType otherType)
+    {
+        float firstMultiplier = GetSingleTypeMultiplier(typing[0], otherType);
+        if (typing.Length == 1)
+        {
+            return firstMultiplier;
+        }
+
+        float secondMultiplier = GetSingleTypeMultiplier(typing[1], otherType);
+        return firstMultiplier * secondMultiplier;
+        
+    }
+
+    private float GetSingleTypeMultiplier(ElementalType myType, ElementalType otherType)
+    {
+        TypeEffect type = TypeEffect.TypeEffectMap[myType];
+
+        if (type.IsWeakTo(otherType))
+        {
+            return 2;
+        }
+        else if (type.Resists(otherType))
+        {
+            return 0.5f;
+        }
+        else if (type.IsImmuneTo(otherType))
+        {
+            return 0;
+        }
+        return 1;
+    }
+
 }
 
 
