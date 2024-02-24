@@ -144,7 +144,7 @@ public class MonsterUnit
         Attack attack = KnownAttacks[attackIndex];
         foreach (MonsterUnit target in targets)
         {
-            Debug.Log($"{_species.name} is using {attack.name} on {target._species.name}!");
+            Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
             int damageToDeal = 0;
             if (attack.Category == AttackCategory.Physical)
             {
@@ -178,8 +178,8 @@ public class MonsterUnit
             Fainted = true;
             Debug.Log($"{this._species.name} has fainted!");
         }
-        
-        PositionInBattle.UpdateStatusText();
+
+        PositionInBattle.UpdateStatus();
     }
 
     public void Heal(float percentage)
@@ -195,7 +195,7 @@ public class MonsterUnit
         int newHealth = currentHealth + (int) healAmount;
         _statsAfterModifiers[Stat.Health] = Mathf.Clamp(newHealth, 0, newHealth);
         
-        PositionInBattle.UpdateStatusText();
+        PositionInBattle.UpdateStatus();
     }
 
     public int GetReadiness()

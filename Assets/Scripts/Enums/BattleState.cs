@@ -1,6 +1,8 @@
 ﻿public enum BattleState
 {
-    WaitingOnPlayer1Choice,
-    WaitingOnPlayer2Choice,
-    ExecutingActions
+    Player1Choice,
+    Player2Choice,
+    ExecutingActions,
+    Player1MidTurnSwitch,
+    Player2MidTurnSwitch
 }

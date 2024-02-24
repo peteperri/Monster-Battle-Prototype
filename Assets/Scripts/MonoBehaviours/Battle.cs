@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -22,6 +25,7 @@ public class Battle : MonoBehaviour
     private TextMeshProUGUI _actionPromptText;
     private TextMeshProUGUI _attackOptionsText;
     private TextMeshProUGUI _switchOptionsText;
+    private TextMeshProUGUI _forcedSwitchOptionsText;
 
     private BattleState _state;
     private int _p1Choice = -1;
@@ -44,12 +48,16 @@ public class Battle : MonoBehaviour
         Transform player2Positions = positions.GetChild(1);
         _p1MonA = player1Positions.GetChild(0).GetComponent<BattlePosition>();
         _p2MonA = player2Positions.GetChild(0).GetComponent<BattlePosition>();
+        _p1MonA.InitializePlayer(_player1);
+        _p2MonA.InitializePlayer(_player2);
 
         //check for double battle, initialize those positions if necessary
         if (isDoubleBattle)
         {
             _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
             _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
+            _p1MonB.InitializePlayer(_player1);
+            _p2MonB.InitializePlayer(_player2);
         }
         
         //initialize UI references 
@@ -61,6 +69,7 @@ public class Battle : MonoBehaviour
         _actionPromptText = _actionPrompt.GetComponent<TextMeshProUGUI>();
         _attackOptionsText = _attackTextObjects.GetChild(1).GetComponent<TextMeshProUGUI>();
         _switchOptionsText = _switchTextObjects.GetChild(1).GetComponent<TextMeshProUGUI>();
+        _forcedSwitchOptionsText = canvas.GetChild(1).GetComponent<TextMeshProUGUI>();
     }
 
     private void Start()
@@ -79,7 +88,7 @@ public class Battle : MonoBehaviour
             SendOutMonsters(_player2, _p2MonA);
         }
 
-        _state = BattleState.WaitingOnPlayer1Choice;
+        _state = BattleState.Player1Choice;
         ShowActionPrompts(1, _p1MonA.MonsterHere);
     }
 
@@ -87,32 +96,95 @@ public class Battle : MonoBehaviour
     {
         for (int i = 0; i <= 9; i++)
         {
-           KeyCode key = KeyCode.Alpha0 + i; // KeyCode.Keypad0 is the starting enum value for the keypad numbers
+           KeyCode key = KeyCode.Alpha0 + i;
            if (Input.GetKeyDown(key))
            {
                SelectPlayerChoice(i);
-               break; // Exit the loop once a key is found and processed
+               break;
            }
         }
     }
 
-    private void ExecutePlayerActions()
+    private IEnumerator ExecutePlayerActions()
     {
+
+        HideActionPrompts();
+        
         PlayerAction p1Action = SelectPlayerActionType(_p1Choice);
         PlayerAction p2Action = SelectPlayerActionType(_p2Choice);
+        
+        Debug.Log("Actions Selected. Press Space to see them play out!");
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         
         //executed if anyone selected forfeit
         HandleForfeit(p1Action, p2Action);
 
+        //wait until HandleSwitch has finished to do anything else
         //handle switching for both players
-        HandleSwitch(p1Action, _p1Choice, 1);
-        HandleSwitch(p2Action, _p2Choice, 2);
+        yield return HandleSwitch(p1Action, _p1Choice, 1);
+        yield return HandleSwitch(p2Action, _p2Choice, 2);
+
+        //wait until PlayersAttack has finished to do anything else
+        yield return PlayersAttack(p1Action, p2Action);
+
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         
-        //executed if both players attack
-        PlayersAttack(p1Action, p2Action);
+        yield return HandleFaint();
+        
         
         //resets everything at the end 
+        Debug.Log("Time to pick actions again!");
+        
+        _state = BattleState.Player1Choice;
         ShowActionPrompts(1, _p1MonA.MonsterHere);
+        
+    }
+
+    private IEnumerator HandleFaint()
+    {
+        if (_p1MonA.MonsterHere.Fainted)
+        {
+            _state = BattleState.Player1MidTurnSwitch;
+            UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
+        }
+        else if (_p2MonA.MonsterHere.Fainted)
+        {
+            _state = BattleState.Player2MidTurnSwitch;
+            UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
+        }
+
+        yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+    }
+
+    public void Pivot(int playerNum)
+    {
+        Debug.Log($"Battlefield Pivot Secondary Effect {playerNum}");
+        if (playerNum == 1)
+        {
+            Debug.Log("Player 1 is Pivoting");
+            _state = BattleState.Player1MidTurnSwitch;
+        }
+        else if (playerNum == 2)
+        {
+            Debug.Log("Player 2 is Pivoting");
+            _state = BattleState.Player2MidTurnSwitch;
+        }
+    }
+
+    private IEnumerator HandlePivot()
+    {
+        //Debug.Log("HandlePivot");
+        if (_state == BattleState.Player1MidTurnSwitch)
+        {
+            Debug.Log("HandlePivot 1");
+            UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
+        }
+        else if (_state == BattleState.Player2MidTurnSwitch)
+        {
+            Debug.Log("HandlePivot 2");
+            UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
+        }
+        yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
     }
 
     private void HandleForfeit(PlayerAction p1Action, PlayerAction p2Action)
@@ -125,7 +197,7 @@ public class Battle : MonoBehaviour
         }
     }
 
-    private void HandleSwitch(PlayerAction playerAction, int playerChoice, int playerNum)
+    private IEnumerator HandleSwitch(PlayerAction playerAction, int playerChoice, int playerNum)
     {
         Trainer player = playerNum == 1 ? _player1 : _player2;
         BattlePosition position =  playerNum == 1 ? _p1MonA : _p2MonA;
@@ -133,18 +205,15 @@ public class Battle : MonoBehaviour
         
         if (playerAction == PlayerAction.Switch)
         {
-            //5 = index 0 
-            //6 = index 1
-            //7 = index 2
-            //8 = index 3
-            //9 = index 4
-
-            int switchIndex = playerChoice - 5;
-            position.SwitchMonster(player.team[switchIndex], player);
+            int switchIndex = playerChoice - 4;
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
+            position.SwitchMonster(player.team[switchIndex]);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
     }
 
-    private void PlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
+    private IEnumerator PlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
     {
         MonsterUnit p1Mon = _p1MonA.MonsterHere;
         MonsterUnit p2Mon = _p2MonA.MonsterHere;
@@ -154,10 +223,10 @@ public class Battle : MonoBehaviour
         {
             int p1AttackIndex = _p1Choice - 1;
             int p2AttackIndex = _p2Choice - 1;
-            
+
             Attack p1Attack = p1Mon.KnownAttacks[p1AttackIndex];
             Attack p2Attack = p2Mon.KnownAttacks[p2AttackIndex];
-            
+
             //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
             if (p1Attack.Priority == p2Attack.Priority)
             {
@@ -166,47 +235,95 @@ public class Battle : MonoBehaviour
 
                 if (p1Speed > p2Speed)
                 {
-                    ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
+                    yield return StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex));
                 }
                 else if (p1Speed < p2Speed)
                 {
-                    ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex);
+                    yield return StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex));
                 }
-                   
+
                 //speed tie! whoever attacks first is RANDOM!
                 else
                 {
                     SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
                 }
             }
-            return;
+            else
+            {
+                if (p1Attack.Priority > p2Attack.Priority)
+                {
+                    yield return StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex));
+                }
+                else if (p1Attack.Priority > p2Attack.Priority)
+                {
+                    yield return StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex));
+                }
+            }
+
         }
-        
+
         //if only one is attacking, just tell it to attack whatever is in front of it 
-        if (p1Action == PlayerAction.Attack)
+        else if (p1Action == PlayerAction.Attack)
         {
             int p1AttackIndex = _p1Choice - 1;
-            p1Mon.UseAttack(p1AttackIndex, new[]{p2Mon});
+            StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex));
+            //p1Mon.UseAttack(p1AttackIndex, new[]{p2Mon});
         }
-
-        if (p2Action == PlayerAction.Attack)
+        else if (p2Action == PlayerAction.Attack)
         {
             int p2AttackIndex = _p2Choice - 1;
-            p2Mon.UseAttack(p2AttackIndex, new[]{p1Mon});
+            StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex));
+            //p2Mon.UseAttack(p2AttackIndex, new[]{p1Mon});
         }
-        
     }
 
-    private void ActuallyAttack(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex)
+    //first is the monster who moves first. second is the monster who moves second.
+    private IEnumerator ActuallyAttack(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
     {
         first.UseAttack(firstAttackIndex, new[]{second});
+        yield return HandlePivot();
 
-        if (!second.Fainted)
+        if (second != null && !second.Fainted && secondAttackIndex != -1)
         {
+            
+            //make sure first is still there, and not returned to its trainer after a pivot. a mon that isn't on the field cannot be attacked
+            first = ReassignFirst(first, second);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             second.UseAttack(secondAttackIndex, new[]{first});
+            yield return HandlePivot();
+            
+        }
+        yield return null;
+    }
+
+    //in the above method, if first uses a pivot move, then it will return to its trainer, and second will still be targetting
+    //first, which is currently not on the field.
+    private MonsterUnit ReassignFirst(MonsterUnit first, MonsterUnit second)
+    {
+        int secondsTrainer = -1;
+
+        if (_player1.team.Contains(second))
+        {
+            secondsTrainer = 1;
+        }
+        else if (_player2.team.Contains(second))
+        {
+            secondsTrainer = 2;
+        }
+        else
+        {
+            throw new Exception("ReassignFirst BROKE");
         }
 
-        _state = BattleState.WaitingOnPlayer1Choice;
+        //if second's trainer is player 1, then first is player 2's mon.
+        if (secondsTrainer == 1)
+        {
+            return _p2MonA.MonsterHere;
+        }
+        
+        //otherwise, first is player 1's mon.
+        return _p1MonA.MonsterHere;
+        
     }
 
     private void SpeedTieAttack(MonsterUnit p1, int p1Index, MonsterUnit p2, int p2Index)
@@ -215,11 +332,11 @@ public class Battle : MonoBehaviour
 
         if (rand == 0)
         {
-            ActuallyAttack(p1, p1Index, p2, p2Index);
+            StartCoroutine(ActuallyAttack(p1, p1Index, p2, p2Index));
         }
         else
         {
-            ActuallyAttack(p2, p2Index, p1, p1Index);
+            StartCoroutine(ActuallyAttack(p2, p2Index, p1, p1Index));
         }
     }
 
@@ -250,7 +367,7 @@ public class Battle : MonoBehaviour
     private void SelectPlayerChoice(int buttonPressed)
     {
         Debug.Log($"Pressed {buttonPressed}");
-        if (_state == BattleState.WaitingOnPlayer1Choice)
+        if (_state == BattleState.Player1Choice)
         {
             _p1Choice = buttonPressed;
             if (ChoiceInvalid(1, _p1Choice))
@@ -259,12 +376,10 @@ public class Battle : MonoBehaviour
                 _p1Choice = -1;
                 return;
             }
-            
-            
-            _state = BattleState.WaitingOnPlayer2Choice;
+            _state = BattleState.Player2Choice;
             ShowActionPrompts(2, _p2MonA.MonsterHere);
         }
-        else if (_state == BattleState.WaitingOnPlayer2Choice)
+        else if (_state == BattleState.Player2Choice)
         {
             _p2Choice = buttonPressed;
             if (ChoiceInvalid(2, _p2Choice))
@@ -275,7 +390,33 @@ public class Battle : MonoBehaviour
             }
             
             _state = BattleState.ExecutingActions;
-            ExecutePlayerActions();
+            StartCoroutine(ExecutePlayerActions());
+        }
+        else if (_state == BattleState.Player1MidTurnSwitch)
+        {
+            if (ChoiceInvalid(1, buttonPressed))
+            {
+                Debug.Log("Invalid mid-switch choice from player 1!");
+                return;
+            }
+
+            MonsterUnit newMonster = _player1.team[buttonPressed - 4];
+            _p1MonA.SwitchMonster(newMonster);
+            _state = BattleState.ExecutingActions;
+            _forcedSwitchOptionsText.gameObject.SetActive(false);
+        }
+        else if (_state == BattleState.Player2MidTurnSwitch)
+        {
+            if (ChoiceInvalid(1, buttonPressed))
+            {
+                Debug.Log("Invalid mid-switch choice from player 2!");
+                return;
+            }
+
+            MonsterUnit newMonster = _player2.team[buttonPressed - 4];
+            _p2MonA.SwitchMonster(newMonster);
+            _state = BattleState.ExecutingActions;
+            _forcedSwitchOptionsText.gameObject.SetActive(false);
         }
     }
 
@@ -291,18 +432,28 @@ public class Battle : MonoBehaviour
             case 2:
             case 3:
             case 4:
+                
+                //if this situation is a mid-turn switch (pivot move, faint), then choosing a move does nothing.
+                if (_state == BattleState.Player1MidTurnSwitch ||
+                    _state == BattleState.Player2MidTurnSwitch) return true;
+                
+                
                 int moveIndex = choice - 1;
                 //if the monster doesn't have a move that corresponds to the player choice, then their choice was invalid.
                 if (monsterBattling.KnownAttacks[moveIndex] == null) return true;
                 return false;
+            
             case 5:
             case 6:
             case 7: 
             case 8: 
             case 9:
-                int switchIndex = choice - 5;
+                int switchIndex = choice - 4;
                 //if they don't have a mon there in their party there, or it is fainted, then this choice is invalid
                 if (player.team[switchIndex] == null || player.team[switchIndex].Fainted) return true;
+                return false;
+            case 0:
+                //forfeit 
                 return false;
             default:
                 return true;
@@ -312,16 +463,23 @@ public class Battle : MonoBehaviour
     //temp UI solution for prototyping purposes
     private void ShowActionPrompts(int playerNum, MonsterUnit monsterBattling)
     {
+        
+        HideActionPrompts();
+        UpdatePromptText(playerNum, monsterBattling);
+        UpdateAttackText(monsterBattling);
+        UpdateSwitchText(playerNum, monsterBattling, _switchOptionsText);
+    }
+
+
+    private void HideActionPrompts()
+    {
         _actionPrompt.gameObject.SetActive(false);
         _attackOptionsText.gameObject.SetActive(false);
         _switchOptionsText.gameObject.SetActive(false);
-        
-        UpdatePromptText(playerNum, monsterBattling);
-        UpdateAttackText(monsterBattling);
-        UpdateSwitchText(playerNum, monsterBattling);
+        _forcedSwitchOptionsText.gameObject.SetActive(false);
     }
 
-    
+
     //TODO: refactor all three "update text" methods, as they contain a lot of repeated logic.
     private void UpdatePromptText(int playerNum, MonsterUnit monsterBattling)
     {
@@ -357,16 +515,19 @@ public class Battle : MonoBehaviour
         _attackOptionsText.gameObject.SetActive(true);
     }
 
-    private void UpdateSwitchText(int playerNum, MonsterUnit monsterBattling)
+    //this method takes the TextMeshPro that needs to show the player's team as a parameter, because we might have to use two 
+    //different TextMeshPro objects at different times- one for when the player is choosing to switch on their own volition, and
+    //another when they are forced to switch by a situation like fainting, or the secondary effect of a move like U-Turn
+    private void UpdateSwitchText(int playerNum, MonsterUnit monsterBattling, TextMeshProUGUI switchOptionsText)
     {
         //reset the options text to the default, so we can replace stuff again
         const string defaultSwitchPromptText = "5- {MONSTER_1}\n6- {MONSTER_2}\n7- {MONSTER_3}\n8- {MONSTER_4}\n9- {MONSTER_5}";
-        _switchOptionsText.text = defaultSwitchPromptText;
+        switchOptionsText.text = defaultSwitchPromptText;
         
         string replaceMeTemplate = "{MONSTER_";
         Trainer trainer = playerNum == 1 ? _player1 : _player2;
         MonsterUnit[] team = trainer.team;
-        string newSwitchPromptText = _switchOptionsText.text;
+        string newSwitchPromptText = switchOptionsText.text;
         int uiNum = 1;
 
         for (int i = 0; i < team.Length; i++)
@@ -391,8 +552,8 @@ public class Battle : MonoBehaviour
             newSwitchPromptText = newSwitchPromptText.Replace(leftoverTemplate, "Fainted!");
         }
 
-        _switchOptionsText.text = newSwitchPromptText;
-        _switchOptionsText.gameObject.SetActive(true);
+        switchOptionsText.text = newSwitchPromptText;
+        switchOptionsText.gameObject.SetActive(true);
     }
 
 

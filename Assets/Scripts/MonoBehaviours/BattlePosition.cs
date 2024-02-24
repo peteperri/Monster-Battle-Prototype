@@ -10,6 +10,8 @@ public class BattlePosition : MonoBehaviour
     private Transform _statusTextParent;
     private TextMeshProUGUI _healthText;
 
+    public Trainer Player { get; private set; } 
+
 
     void Awake()
     {
@@ -24,27 +26,34 @@ public class BattlePosition : MonoBehaviour
         MonsterHere = null;
     }
 
-    public void SwitchMonster(MonsterUnit newMonster, Trainer trainer)
+    public void InitializePlayer(Trainer player)
     {
+        if (this.Player != null) return;
+        this.Player = player;
+    }
+
+    public void SwitchMonster(MonsterUnit newMonster)
+    {
+        Debug.Log("SwitchMonster called");
         
-        int indexOfMonsterSwitchingOut = Array.IndexOf(trainer.team, MonsterHere);
+        //find the index of the monster that's switching in
+        int indexOfNewMonster = Array.IndexOf(Player.team, newMonster);
         
-        //swap their positions in the array, so that the monster getting sent out is now at the front of the array. 
-        MonsterUnit temp = trainer.team[0];
-        trainer.team[0] = trainer.team[indexOfMonsterSwitchingOut];
-        trainer.team[indexOfMonsterSwitchingOut] = temp;
+        //since MonsterHere is currently out, it should be at index 0! 
+        
+        //swap their positions in the array, so that whatever monster is out is at index 0
+        Player.team[0] = newMonster;
+        Player.team[indexOfNewMonster] = MonsterHere;
         
         SendMonster(newMonster);
     }
 
     public void SendMonster(MonsterUnit newMonster)
     {
-
-        //tell the monster that's here right now that it isn't, assuming it exists.
+        //tell the monster that's here right now that it isn't anymore, assuming it exists.
         if (MonsterHere != null)
         {
             MonsterHere.PositionInBattle = null;
-
         }
         
         //set the monster here to the new monster, passed in by the parameter
@@ -56,6 +65,17 @@ public class BattlePosition : MonoBehaviour
         //update sprite 
         _spriteRenderer.sprite = newMonster.GetSpecies().Sprite;
         
+        UpdateStatusText();
+    }
+
+    public void UpdateStatus()
+    {
+
+        if (MonsterHere.Fainted)
+        {
+            _spriteRenderer.sprite = null;
+        }
+
         UpdateStatusText();
     }
 
