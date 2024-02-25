@@ -11,8 +11,7 @@ public class BattlePosition : MonoBehaviour
     private TextMeshProUGUI _healthText;
 
     public Trainer Player { get; private set; } 
-
-
+    
     void Awake()
     {
         _spriteRenderer = GetComponent<SpriteRenderer>();
@@ -34,7 +33,8 @@ public class BattlePosition : MonoBehaviour
 
     public void SwitchMonster(MonsterUnit newMonster)
     {
-        Debug.Log("SwitchMonster called");
+        //a monster's stat modifiers are temporary, and will reset when it switches out.
+        MonsterHere.ResetStatModifiers();
         
         //find the index of the monster that's switching in
         int indexOfNewMonster = Array.IndexOf(Player.team, newMonster);

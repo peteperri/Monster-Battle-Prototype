@@ -3,10 +3,9 @@
 [CreateAssetMenu(fileName = "New Pivot", menuName = "Attack Effect/Pivot")]
 public class PivotEffect : AttackEffect
 {
-    
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
     {
-        Debug.Log("Pivot Secondary Effect!");
+        //Debug.Log("Pivot Secondary Effect!");
         
         //using the monster's position in battle, get its player. 
         Trainer myTrainer = thisMonsterUnit.PositionInBattle.Player;

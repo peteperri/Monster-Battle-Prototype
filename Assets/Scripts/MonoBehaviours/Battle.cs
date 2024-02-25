@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -12,11 +13,11 @@ public class Battle : MonoBehaviour
 {
     private Trainer _player1;
     private BattlePosition _p1MonA;
-    private BattlePosition _p1MonB; //only used in double battles, which are not yet implemented. 
+    //private BattlePosition _p1MonB; //only used in double battles, which are not yet implemented. 
     
     private Trainer _player2;
     private BattlePosition _p2MonA;
-    private BattlePosition _p2MonB; //only used in double battles, which are not yet implemented.
+    //private BattlePosition _p2MonB; //only used in double battles, which are not yet implemented.
 
     private Transform _actionPrompt;
     private Transform _attackTextObjects;
@@ -32,8 +33,7 @@ public class Battle : MonoBehaviour
     private int _p1Choice = -1;
     private int _p2Choice = -1;
     
-    
-    [SerializeField] private bool isDoubleBattle = false;
+    //[SerializeField] private bool isDoubleBattle = false;
     
     
     private void Awake()
@@ -53,13 +53,13 @@ public class Battle : MonoBehaviour
         _p2MonA.InitializePlayer(_player2);
 
         //check for double battle, initialize those positions if necessary
-        if (isDoubleBattle)
+        /*if (isDoubleBattle)
         {
             _p1MonB = player1Positions.GetChild(1).GetComponent<BattlePosition>();
             _p2MonB = player2Positions.GetChild(1).GetComponent<BattlePosition>();
             _p1MonB.InitializePlayer(_player1);
             _p2MonB.InitializePlayer(_player2);
-        }
+        }*/
         
         //initialize UI references 
         Transform canvas = GameObject.Find("MainCanvas").transform;
@@ -78,19 +78,21 @@ public class Battle : MonoBehaviour
 
     private void Start()
     {
-        TeamCheck(_player1);
-        TeamCheck(_player2);
+        List<MonsterSpecies> allSpecies = Resources.LoadAll<MonsterSpecies>("Monster Species").ToList();
+        
+        GiveRandomTeam(_player1, allSpecies);
+        GiveRandomTeam(_player2, allSpecies);
 
-        if (isDoubleBattle)
+        /*if (isDoubleBattle)
         {
             SendOutMonsters(_player1, _p1MonA, _p1MonB);
             SendOutMonsters(_player2, _p2MonA, _p2MonB);
         }
         else
-        {
+        {*/
             SendOutMonsters(_player1, _p1MonA);
             SendOutMonsters(_player2, _p2MonA);
-        }
+        //}
 
         _state = BattleState.Player1Choice;
         ShowActionPrompts(1, _p1MonA.MonsterHere);
@@ -111,35 +113,53 @@ public class Battle : MonoBehaviour
 
     private IEnumerator ExecutePlayerActions()
     {
-
         HideActionPrompts();
         
         PlayerAction p1Action = SelectPlayerActionType(_p1Choice);
         PlayerAction p2Action = SelectPlayerActionType(_p2Choice);
         
-        Debug.Log("Actions Selected. Press Space to see them play out!");
         Message("Actions Selected. Press Space to see them play out!");
         yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         
+        Debug.Log("Before HandleForfeit");
         //executed if anyone selected forfeit
-        HandleForfeit(p1Action, p2Action);
+        yield return HandleForfeit(p1Action, p2Action);
 
-        //wait until HandleSwitch has finished to do anything else
+        Debug.Log("Before Handling Switch");
         //handle switching for both players
-        yield return HandleSwitch(p1Action, _p1Choice, 1);
-        yield return HandleSwitch(p2Action, _p2Choice, 2);
+        if (p1Action == PlayerAction.Switch && p2Action == PlayerAction.Switch)
+        {        
+            Debug.Log("Before Both Switch");
+            yield return HandleSwitch( _p1Choice, 1);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return HandleSwitch(_p2Choice, 2);
+        }
+        else 
+        {
+            if (p1Action == PlayerAction.Switch)
+            {
+                Debug.Log("Before P1 Switch");
 
-        //wait until PlayersAttack has finished to do anything else
-        yield return PlayersAttack(p1Action, p2Action);
-
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+                yield return HandleSwitch( _p1Choice, 1);
+            }
+            
+            if (p2Action == PlayerAction.Switch)
+            {
+                Debug.Log("Before P2 Switch");
+                yield return HandleSwitch( _p2Choice, 2);
+            }
+        }
         
+        Debug.Log("Before Players Attack");
+        yield return PlayersAttack(p1Action, p2Action);
+        
+        Debug.Log("Before HandleFaint");
         yield return HandleFaint();
         
-        
-        //resets everything at the end 
-        Debug.Log("Time to pick actions again!");
-        
+        Debug.Log("The turn is now over");
+        Message("The turn is over. Press space to start the next turn!");
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+
         _state = BattleState.Player1Choice;
         ShowActionPrompts(1, _p1MonA.MonsterHere);
         
@@ -147,23 +167,70 @@ public class Battle : MonoBehaviour
 
     private IEnumerator HandleFaint()
     {
+
+        int winner = CheckForWinner();
+
+        if (winner != -1)
+        {
+            if (winner == 1)
+            {
+                Message("Player 2 has no more monsters that can fight!\nPlayer 1 Wins!\nPress Space to play again!");
+            }
+            else if (winner == 2)
+            {
+                Message("Player 1 has no more monsters that can fight!\nPlayer 2 Wins!\nPress Space to play again!");
+            }
+            
+            FindObjectOfType<MusicPlayer>().PlayWinMusic();
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        
         if (_p1MonA.MonsterHere.Fainted)
         {
             _state = BattleState.Player1MidTurnSwitch;
             UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
+            yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
         else if (_p2MonA.MonsterHere.Fainted)
         {
             _state = BattleState.Player2MidTurnSwitch;
             UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
+            yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
 
-        yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+        
+    }
+    
+    private int CheckForWinner()
+    {
+        if (PlayerLost(_player1)) return 2;
+        if (PlayerLost(_player2)) return 1;
+        return -1;
     }
 
+    private bool PlayerLost(Trainer player)
+    {
+        MonsterUnit[] team = player.team;
+
+        foreach (MonsterUnit monster in team)
+        {
+            if (!monster.Fainted)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    
     public void Pivot(int playerNum)
     {
-        Debug.Log($"Battlefield Pivot Secondary Effect {playerNum}");
+        //Debug.Log($"Battlefield Pivot Secondary Effect {playerNum}");
         if (playerNum == 1)
         {
             Debug.Log("Player 1 is Pivoting");
@@ -180,45 +247,56 @@ public class Battle : MonoBehaviour
 
     private IEnumerator HandlePivot()
     {
-        //Debug.Log("HandlePivot");
         if (_state == BattleState.Player1MidTurnSwitch)
         {
-            //Debug.Log("HandlePivot 1");
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
+            yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            
         }
         else if (_state == BattleState.Player2MidTurnSwitch)
         {
-            //Debug.Log("HandlePivot 2");
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
+            yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
-        yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
     }
 
-    private void HandleForfeit(PlayerAction p1Action, PlayerAction p2Action)
+    private IEnumerator HandleForfeit(PlayerAction p1Action, PlayerAction p2Action)
     {
         //if anyone forfeits, restart the game 
         if (p1Action == PlayerAction.Forfeit || p2Action == PlayerAction.Forfeit)
         {
-            //TODO: make this better
+            if (p1Action == PlayerAction.Forfeit)
+            {
+                Message("Player 1 Forfeited! Player 2 Wins!\nPress Space to play again!");
+            }
+            else
+            {
+                Message("Player 2 Forfeited! Player 1 Wins!\nPress Space to play again!");
+            }
+            
+            FindObjectOfType<MusicPlayer>().PlayWinMusic();
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
+
+        yield return null;
     }
 
-    private IEnumerator HandleSwitch(PlayerAction playerAction, int playerChoice, int playerNum)
+    private IEnumerator HandleSwitch(int playerChoice, int playerNum)
     {
         Trainer player = playerNum == 1 ? _player1 : _player2;
         BattlePosition position =  playerNum == 1 ? _p1MonA : _p2MonA;
-        MonsterUnit monsterBattling = position.MonsterHere;
-        
-        if (playerAction == PlayerAction.Switch)
-        {
-            int switchIndex = playerChoice - 4;
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-            Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
-            Message($"Player {playerNum} is switching to {player.team[switchIndex].UnitName}");
-            position.SwitchMonster(player.team[switchIndex]);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-        }
+        int switchIndex = playerChoice - 4;
+        Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
+        Message($"Player {playerNum} is switching to {player.team[switchIndex].UnitName}");
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        position.SwitchMonster(player.team[switchIndex]);
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
     }
 
     private IEnumerator PlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
@@ -234,7 +312,7 @@ public class Battle : MonoBehaviour
 
             Attack p1Attack = p1Mon.KnownAttacks[p1AttackIndex];
             Attack p2Attack = p2Mon.KnownAttacks[p2AttackIndex];
-
+            
             //if they are both attacking, and those attacks have equivalent priority, the result comes down to the readiness stat (speed, in pokemon).
             if (p1Attack.Priority == p2Attack.Priority)
             {
@@ -243,28 +321,28 @@ public class Battle : MonoBehaviour
 
                 if (p1Speed > p2Speed)
                 {
-                    yield return StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex));
+                    yield return ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
                 }
                 else if (p1Speed < p2Speed)
                 {
-                    yield return StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex));
+                    yield return ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex);
                 }
 
                 //speed tie! whoever attacks first is RANDOM!
                 else
                 {
-                    SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
+                    yield return SpeedTieAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
                 }
             }
             else
             {
                 if (p1Attack.Priority > p2Attack.Priority)
                 {
-                    yield return StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex));
+                    yield return ActuallyAttack(p1Mon, p1AttackIndex, p2Mon, p2AttackIndex);
                 }
                 else if (p1Attack.Priority > p2Attack.Priority)
                 {
-                    yield return StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex));
+                    yield return ActuallyAttack(p2Mon, p2AttackIndex, p1Mon, p1AttackIndex);
                 }
             }
 
@@ -274,13 +352,13 @@ public class Battle : MonoBehaviour
         else if (p1Action == PlayerAction.Attack)
         {
             int p1AttackIndex = _p1Choice - 1;
-            StartCoroutine(ActuallyAttack(p1Mon, p1AttackIndex));
+            yield return ActuallyAttack(p1Mon, p1AttackIndex);
             //p1Mon.UseAttack(p1AttackIndex, new[]{p2Mon});
         }
         else if (p2Action == PlayerAction.Attack)
         {
             int p2AttackIndex = _p2Choice - 1;
-            StartCoroutine(ActuallyAttack(p2Mon, p2AttackIndex));
+            yield return ActuallyAttack(p2Mon, p2AttackIndex);
             //p2Mon.UseAttack(p2AttackIndex, new[]{p1Mon});
         }
     }
@@ -288,63 +366,119 @@ public class Battle : MonoBehaviour
     //first is the monster who moves first. second is the monster who moves second.
     private IEnumerator ActuallyAttack(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
     {
-        first.UseAttack(firstAttackIndex, new[]{second});
-        yield return HandlePivot();
-
+        
+        second = ReassignTarget(first);
+        
+        bool moveFailed1 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex);
+        
+        //we must call reassign to make sure that the monster first is trying to attack is actually on the field and didn't switch out.
+        first.UseAttack(firstAttackIndex, new[]{second}, moveFailed1);
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        
+        if (_state == BattleState.Player1MidTurnSwitch || _state == BattleState.Player2MidTurnSwitch)
+        {
+            yield return HandlePivot();
+        }
+        
         if (second != null && !second.Fainted && secondAttackIndex != -1)
         {
-            
             //make sure first is still there, and not returned to its trainer after a pivot. a mon that isn't on the field cannot be attacked
-            first = ReassignFirst(first, second);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-            second.UseAttack(secondAttackIndex, new[]{first});
-            yield return HandlePivot();
+            first = ReassignTarget(second);
+
             
+            bool moveFailed2 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex);
+            second.UseAttack(secondAttackIndex, new[]{first}, moveFailed2);
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            if (_state == BattleState.Player1MidTurnSwitch || _state == BattleState.Player2MidTurnSwitch)
+            {
+                yield return HandlePivot();
+            }
         }
-        yield return null;
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
     }
 
-    //in the above method, if first uses a pivot move, then it will return to its trainer, and second will still be targetting
-    //first, which is currently not on the field.
-    private MonsterUnit ReassignFirst(MonsterUnit first, MonsterUnit second)
+    //this method will detect if a move being readied should fail because of some precondition that must be checked
+    //before attacks can be executed. 
+    private bool CheckFailure(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
     {
-        int secondsTrainer = -1;
+        return CheckSuckerPunchFail(first, firstAttackIndex, second, secondAttackIndex);
+    }
 
-        if (_player1.team.Contains(second))
-        {
-            secondsTrainer = 1;
-        }
-        else if (_player2.team.Contains(second))
-        {
-            secondsTrainer = 2;
-        }
-        else
-        {
-            throw new Exception("ReassignFirst BROKE");
-        }
+    /*sucker punch (and its variants, like thunderclap) have a unique effect:
+      the move has increased priority, but will fail if: 
+      - the opponent went first (meaning they also used an increased priority move, like sucker punch or quick attack, 
+        and their readiness/speed was higher than yours, 
+        or they used a move with higher priority
+      - the opponent uses a status move, not an attack that deals direct damage
+      - the opponent switched, or did something other than attacking
+      
+      this means that sucker punch variants will work if and only if 
+      the move strikes first, and the opponent is readying an attack that deals direct damage.
+     */
+    private bool CheckSuckerPunchFail(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
+    {
+        //if we were moving second, and we used sucker punch, our move will fail.
+        if (UsingSuckerPunch(second, secondAttackIndex)) return true;
+        
+        //if we're not using sucker punch, then of course the sucker punch fail won't trigger. duh.
+        if (!UsingSuckerPunch(first, firstAttackIndex)) return false;
+        
+        //if the opponent isn't attacking, then sucker punch will fail.
+        if (secondAttackIndex == -1) return true;
+        
+        //get the opponent's attack that they are readying
+        Attack secondAttack = second.KnownAttacks[secondAttackIndex];
+        
+        //if that move is a status move (meaning it does no damage) then sucker punch will fail
+        if (secondAttack.Category == AttackCategory.Status) return true;
+        
+        //if all of the above return statements never execute, then sucker punch will succeed.
+        return false;
+    }
 
-        //if second's trainer is player 1, then first is player 2's mon.
-        if (secondsTrainer == 1)
+    //this method just checks if the monster is using sucker punch or a variant like thunderclap
+    private static bool UsingSuckerPunch(MonsterUnit unit, int attackIndex)
+    {
+        if (attackIndex < 0 || attackIndex > unit.KnownAttacks.Length - 1) return false;
+        
+        //get the secondary effects of the move we're checking
+        AttackEffect[] effects = unit.KnownAttacks[attackIndex].SecondaryEffects;
+        
+        //if the move has no secondary effects, then this is not a sucker punch variant
+        if (effects == null || effects.Length == 0) return false; 
+        
+        //the suckerpunch effect must ALWAYS be the first secondary effect, according to this implementation.
+        AttackEffect effect = effects[0];
+        
+        /*if the first effect in the list of effects for the move they are readying is the sucker punch effect,
+         then return true. else return false.*/
+        return effect is SuckerPunchEffect;
+    }
+    
+    private MonsterUnit ReassignTarget(MonsterUnit unit)
+    {
+        int playerNum = unit.PositionInBattle.Player.PlayerNum;
+        if (playerNum == 1)
         {
             return _p2MonA.MonsterHere;
         }
-        
-        //otherwise, first is player 1's mon.
-        return _p1MonA.MonsterHere;
-        
+        else
+        {
+            return _p1MonA.MonsterHere;
+        }
     }
 
-    private void SpeedTieAttack(MonsterUnit p1, int p1Index, MonsterUnit p2, int p2Index)
+    private IEnumerator SpeedTieAttack(MonsterUnit p1, int p1Index, MonsterUnit p2, int p2Index)
     {
         int rand = Random.Range(0, 1);
 
         if (rand == 0)
         {
-            StartCoroutine(ActuallyAttack(p1, p1Index, p2, p2Index));
+            yield return ActuallyAttack(p1, p1Index, p2, p2Index);
         }
         else
         {
-            StartCoroutine(ActuallyAttack(p2, p2Index, p1, p1Index));
+            yield return ActuallyAttack(p2, p2Index, p1, p1Index);
         }
     }
 
@@ -415,7 +549,7 @@ public class Battle : MonoBehaviour
         }
         else if (_state == BattleState.Player2MidTurnSwitch)
         {
-            if (ChoiceInvalid(1, buttonPressed))
+            if (ChoiceInvalid(2, buttonPressed))
             {
                 Debug.Log("Invalid mid-switch choice from player 2!");
                 return;
@@ -543,6 +677,10 @@ public class Battle : MonoBehaviour
     //another when they are forced to switch by a situation like fainting, or the secondary effect of a move like U-Turn
     private void UpdateSwitchText(int playerNum, MonsterUnit monsterBattling, TextMeshProUGUI switchOptionsText)
     {
+        
+        //clear the main message, because this can block the switch prompts
+        Message("");
+        
         //reset the options text to the default, so we can replace stuff again
         const string defaultSwitchPromptText = "5- {MONSTER_1}\n6- {MONSTER_2}\n7- {MONSTER_3}\n8- {MONSTER_4}\n9- {MONSTER_5}";
         switchOptionsText.text = defaultSwitchPromptText;
@@ -553,28 +691,22 @@ public class Battle : MonoBehaviour
         string newSwitchPromptText = switchOptionsText.text;
         int uiNum = 1;
 
-        for (int i = 0; i < team.Length; i++)
+        //starts at 1 because 0 is in battle 
+        for (int i = 1; i < team.Length; i++)
         {
             MonsterUnit mon = team[i];
-            if (mon == monsterBattling || mon.Fainted)
-            {
-                continue;
-            }
-
             string toReplace = replaceMeTemplate + uiNum + "}";
             string monName = mon.UnitName;
+            
+            if (mon.Fainted)
+            {
+                monName = $"{monName} (fainted)";
+            }
+            
             newSwitchPromptText = newSwitchPromptText.Replace(toReplace, monName);
             uiNum++;
         }
-
-        //deal with fainted mons
-        //TODO: refactor into upper loop?
-        for (int i = 1; i <= 5; i++)
-        {
-            string leftoverTemplate = "{MONSTER_" + i + "}";
-            newSwitchPromptText = newSwitchPromptText.Replace(leftoverTemplate, "Fainted!");
-        }
-
+        
         switchOptionsText.text = newSwitchPromptText;
         switchOptionsText.gameObject.SetActive(true);
     }
@@ -605,54 +737,21 @@ public class Battle : MonoBehaviour
         if (spotB == null) return;
         spotB.SendMonster(player.team[1]);
     }
-
-    //this method detects if a player has no team. if they have no team, give them a random one.
-    private static void TeamCheck(Trainer player)
+    
+    private static void GiveRandomTeam(Trainer player, List<MonsterSpecies> allSpecies)
     {
-        if (player.team.Length == 0)
-        {
-            MonsterSpecies[] allSpecies = Resources.LoadAll<MonsterSpecies>("Monster Species");
-            GiveRandomTeam(player, allSpecies);
-        }
-    }
 
-    //TODO: Make it so random teams do not feature duplicate monsters
-    private static void GiveRandomTeam(Trainer player, MonsterSpecies[] allSpecies)
-    {
+        //don't give a random team to a player that has a team already!
+        if (player.team.Length != 0) return;
+        
         MonsterUnit[] randomTeam = new MonsterUnit[6];
         for (int i = 0; i < 6; i++)
         {
-            int randIndex = Random.Range(0, allSpecies.Length - 1);
+            int randIndex = Random.Range(0, allSpecies.Count - 1);
             MonsterSpecies randomMonster = allSpecies[randIndex];
-
-            while (TeamContainsSpecies(randomTeam, randomMonster))
-            {
-                randIndex = Random.Range(0, allSpecies.Length - 1);
-                randomMonster = allSpecies[randIndex];
-            }
-            
-            //randomTeam[i] = new MonsterUnit(randomMonster);
-            
-            /*TODO: remove/comment out this line and uncomment the above.
-             using random natures to ensure stat calculation is working, 
-             random teams will all have neutral natures normally*/
+            allSpecies.Remove(allSpecies[randIndex]);
             randomTeam[i] = new MonsterUnit(randomMonster, NatureHelper.GetRandomNature());
         }
         player.team = randomTeam;
-    }
-
-    private static bool TeamContainsSpecies(MonsterUnit[] team, MonsterSpecies species)
-    {
-        for (int i = 0; i < team.Length; i++)
-        {
-            if (team[i] == null) continue;
-
-            if (team[i].GetSpecies().GetName() == species.GetName())
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

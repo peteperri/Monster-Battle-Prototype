@@ -11,9 +11,11 @@ public class Attack : ScriptableObject
     [field: SerializeField] public int Priority { get; private set; }
     [field: SerializeField] public ElementalType Type { get; private set; }
     [field: SerializeField] public AttackCategory Category { get; private set; }
+    [field: SerializeField] public AttackTarget Target { get; private set; } = AttackTarget.Single;
+    [field: SerializeField] public CriticalRate CritRate { get; private set; } = CriticalRate.Normal;
     [field: SerializeField] public bool MakesContact { get; private set; }
-    [field: SerializeField] public AttackEffect[] SecondaryEffect { get; private set; }
-    
+    [field: SerializeField] public AttackEffect[] SecondaryEffects { get; private set; }
+
 
     //compares this attack's priority with another. return value is similar to a compareTo method
     public int ComparePriority(Attack other)

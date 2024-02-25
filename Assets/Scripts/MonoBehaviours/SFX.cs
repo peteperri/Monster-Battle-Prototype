@@ -5,16 +5,11 @@ using UnityEngine.PlayerLoop;
 public class SFX : MonoBehaviour
 {
     [SerializeField] private SerializedDictionary<SoundEffect, AudioClip> soundClips;
-    private AudioSource _audioSource;
-
-    void Awake()
-    {
-        _audioSource = GetComponent<AudioSource>();
-    }
-
+    [SerializeField] private AudioSource audioSource;
+    
     private void PlaySound(SoundEffect soundToPlay)
     {
-        _audioSource.PlayOneShot(soundClips[soundToPlay]);
+        audioSource.PlayOneShot(soundClips[soundToPlay]);
     }
 
     //refactor to singleton pattern 
@@ -25,8 +20,4 @@ public class SFX : MonoBehaviour
     }
 }
 
-public enum SoundEffect
-{
-    Confirm,
-    Deny
-}
+

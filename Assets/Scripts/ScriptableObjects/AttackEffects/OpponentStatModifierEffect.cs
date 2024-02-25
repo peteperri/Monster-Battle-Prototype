@@ -8,7 +8,7 @@ public class OpponentStatModifierEffect : AttackEffect
     [SerializeField] private int stagesToAddOrRemove;
     [SerializeField] private int percentageChance;
     
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
     {
         if (statToEffect == Stat.Health) return;
 
@@ -18,8 +18,9 @@ public class OpponentStatModifierEffect : AttackEffect
             //if the stat drop doesn't ALWAYS happen, say "How unlucky!"
             string luckMessage = percentageChance == 100 ? "" : " How unlucky!";
 
+            int statBeforeDrop = target.GetStat(statToEffect);
             target.ApplyStatModifier(statToEffect, stagesToAddOrRemove);
-            Battle.StaticMessage(Battle.GetCurrentMessage() + $"\n{target.UnitName}'s {statToEffect} dropped to {target.GetStat(statToEffect)}!" + luckMessage);
+            Battle.StaticMessage(Battle.GetCurrentMessage() + $"\n{target.UnitName}'s {statToEffect} dropped from {statBeforeDrop} to {target.GetStat(statToEffect)}!" + luckMessage);
         }
     }
 }

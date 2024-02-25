@@ -6,10 +6,15 @@ public class SelfHealEffect : AttackEffect
 {
     [SerializeField] private int healPercent = 50;
     
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
     {
-        //TODO: WRITE THIS METHOD  
-        thisMonsterUnit.Heal(healPercent);
-        Battle.StaticMessage(Battle.GetCurrentMessage() + "\nIt restored HP!");
+        if (thisMonsterUnit.Heal(healPercent))
+        {
+            Battle.StaticMessage(Battle.GetCurrentMessage() + "\nIt restored HP!");
+        }
+        else
+        {
+            Battle.StaticMessage(Battle.GetCurrentMessage() + "\n...but its health was already full!");
+        }
     }
 }

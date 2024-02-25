@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using AYellowpaper.SerializedCollections;
+using UnityEditor.Experimental.Rendering;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
@@ -122,13 +124,12 @@ public class MonsterUnit
 
         _statModifierStages[statToModify] = newStatModifier;
         ComputeModifiedStats();
-
     }
 
     //this method takes in an array of targets for future double-battle functionality
     //at this time, this array will only ever have a size of one, because 
     //double battles are not yet implemented.
-    public void UseAttack(int attackIndex, MonsterUnit[] targets)
+    public void UseAttack(int attackIndex, MonsterUnit[] targets, bool attackFailed)
     {
         if (attackIndex > KnownAttacks.Length || attackIndex < 0)
         {
@@ -141,60 +142,128 @@ public class MonsterUnit
             Debug.Log($"{UnitName} has fainted and cannot attack!");
             return;
         }
-
+        
         Attack attack = KnownAttacks[attackIndex];
+        Battle.StaticMessage($"{_species.name} used {attack.name}!");
+        
+        if (attackFailed)
+        {
+            Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...But it failed!");
+            return;
+        }
+        
+        if (attack.Target == AttackTarget.Self)
+        {
+            ExecuteAllSecondaryEffects(attack, this, 0);
+            return;
+        }
+        
+        AttackAllTargets(attack, targets);
+
+    }
+
+    public void AttackAllTargets(Attack attack, MonsterUnit[] targets)
+    {
         foreach (MonsterUnit target in targets)
         {
-            Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
-            Battle.StaticMessage($"{_species.name} used {attack.name}!");
-            int damageToDeal = 0;
+            AttackSingleTarget(attack, target);
+        }
+    }
 
-            MonsterSpecies targetSpecies = target.GetSpecies();
-            
-            float typingMultiplier = targetSpecies.GetTypeMultiplier(attack.Type);
-            if (typingMultiplier == 0)
+    private void AttackSingleTarget(Attack attack, MonsterUnit target)
+    {
+        Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
+           
+        int damageDealt = 0;
+
+        MonsterSpecies targetSpecies = target.GetSpecies();
+
+        if (MoveMissed(attack))
+        {
+            Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...But it missed!");
+            return;
+        }
+
+        float typingMultiplier = targetSpecies.GetTypeMultiplier(attack.Type);
+        if (typingMultiplier == 0)
+        {
+            Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...But the target was immune!");
+            return;
+        }
+        
+        if (attack.Category != AttackCategory.Status)
+        {
+            if (typingMultiplier < 1)
             {
-                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... But the target was immune!");
-                continue;
-            }
-            else if (typingMultiplier < 1)
-            {
-                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... It's not very effective.");
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...It's not very effective.");
+                SFX.Play(SoundEffect.HitNotVeryEffective);
             }
             else if (typingMultiplier > 1)
             {
-                Battle.StaticMessage($"{Battle.GetCurrentMessage()}... It was super effective!");
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...It was super effective!");
+                SFX.Play(SoundEffect.HitSuperEffective);
             }
-
-            if (attack.Category != AttackCategory.Status)
+            else
             {
-                float attackStat;
-                float defenseStat;
-                
-                if (attack.Category == AttackCategory.Physical)
-                {
-                    attackStat = this._statsAfterModifiers[Stat.Strength];
-                    defenseStat = target._statsAfterModifiers[Stat.Defense];
-                }
-                else
-                {
-                    attackStat = this._statsAfterModifiers[Stat.Intelligence];
-                    defenseStat = target._statsAfterModifiers[Stat.Resilience];
-                }
-
-                float stabMultiplier = IsStab(attack) ? 1.5f : 1;
-                Debug.Log($"Stab multiplier? {stabMultiplier}");
-                Debug.Log($"Typing multiplier? {typingMultiplier}");
-                float allMultipliers = typingMultiplier * stabMultiplier;
-                
-                damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower, allMultipliers);
-                target.TakeDamage(damageToDeal);
+                SFX.Play(SoundEffect.HitNormal);
             }
+
+            bool isCrit = IsCrit(attack);
+            if (isCrit)
+            {
+                Battle.StaticMessage($"{Battle.GetCurrentMessage()} A critical hit!");
+            }
+
+            damageDealt = DealDamage(attack, target, isCrit, typingMultiplier);
+        }
+        ExecuteAllSecondaryEffects(attack, target, damageDealt);
+    }
+
+    private int DealDamage(Attack attack, MonsterUnit target, bool isCrit, float typingMultiplier)
+    {
+        float attackStat;
+        float defenseStat;
+        float defenseStatPreMods;
             
-            for (int i = 0; i < attack.SecondaryEffect.Length; i++)
-            {
-                attack.SecondaryEffect[i].ExecuteSecondaryEffect(this, target);
-            }
+        if (attack.Category == AttackCategory.Physical)
+        {
+            attackStat = this._statsAfterModifiers[Stat.Strength];
+            defenseStat = target._statsAfterModifiers[Stat.Defense];
+            defenseStatPreMods = target._statsBeforeModifiers[Stat.Defense];
+        }
+        else
+        {
+            attackStat = this._statsAfterModifiers[Stat.Intelligence];
+            defenseStat = target._statsAfterModifiers[Stat.Resilience];
+            defenseStatPreMods = target._statsBeforeModifiers[Stat.Resilience];
+        }
+            
+        //critical hits ignore defense boosts, but they do not ignore defense drops 
+        if (isCrit && defenseStat > defenseStatPreMods)
+        {
+            defenseStat = defenseStatPreMods;
+        }
+
+        float stabMultiplier = IsStab(attack) ? 1.5f : 1;
+        float critMultiplier = isCrit ? 1.5f : 1;
+            
+        //Debug.Log($"Stab multiplier? {stabMultiplier}");
+        //Debug.Log($"Typing multiplier? {typingMultiplier}");
+        //Debug.Log($"Crit multiplier? {critMultiplier}");
+        float allMultipliers = typingMultiplier * stabMultiplier * critMultiplier;
+            
+        int damageToDeal = Calculator.CalculateDamage(attackStat, defenseStat, attack.BasePower, allMultipliers);
+        target.TakeDamage(damageToDeal);
+        return damageToDeal;
+    }
+
+    private void ExecuteAllSecondaryEffects(Attack attack, MonsterUnit target, int damageToDeal)
+    {
+        if (attack.SecondaryEffects.Length == 0) return;
+        
+        for (int i = 0; i < attack.SecondaryEffects.Length; i++)
+        {
+            attack.SecondaryEffects[i].ExecuteSecondaryEffect(this, target, damageToDeal);
         }
     }
 
@@ -214,16 +283,22 @@ public class MonsterUnit
         PositionInBattle.UpdateStatus();
     }
 
-    public void Heal(float percentage)
+    //returns true if healed, false if was at max HP already
+    public bool Heal(float percentage)
     {
         int maxHealth = _statsBeforeModifiers[Stat.Health];
-        percentage /= 100; //turns "50%" into "0.5"
+        int currentHealth = _statsAfterModifiers[Stat.Health];
+        if (currentHealth >= maxHealth)
+        {
+            return false;
+        }
+        percentage /= 100; //turns "50" into "0.5"
         float healAmount = maxHealth * percentage;
         
         //ensure we do not heal above max HP
         healAmount = Mathf.Clamp(healAmount, 0, maxHealth);
 
-        int currentHealth = _statsAfterModifiers[Stat.Health];
+        
         int newHealth = currentHealth + (int) healAmount;
 
         if (newHealth > maxHealth)
@@ -231,8 +306,8 @@ public class MonsterUnit
             newHealth = maxHealth;
         }
         _statsAfterModifiers[Stat.Health] = newHealth;
-        
         PositionInBattle.UpdateStatus();
+        return true;
     }
 
     public int GetMaxHealth()
@@ -249,7 +324,51 @@ public class MonsterUnit
     { 
         ElementalType[] myTyping = _species.GetTyping();
         ElementalType attackType = attack.Type;
-        return attackType == myTyping[0] || attackType == myTyping[1];
+        
+        //a move is stab is the attack type matches my first type or
+        //if i have a second type, and it matches that type.
+        return attackType == myTyping[0] || (myTyping.Length > 1 && attackType == myTyping[1]);
+    }
+
+    //Source: https://bulbapedia.bulbagarden.net/wiki/Critical_hit (probability/stage modifiers section)
+    private static bool IsCrit(Attack attack)
+    {
+        CriticalRate rate = attack.CritRate;
+        float denominator;
+        switch (rate)
+        {
+            case CriticalRate.Guaranteed:
+                //if the move has a guaranteed crit rate, then this was a crit!
+                return true;
+            case CriticalRate.High:
+                //if the move has a high crit rate, increase the percentage chance by decreasing the denominator
+                denominator = 8;
+                break;
+            case CriticalRate.Normal: 
+            default:
+                //normal pokemon crit rate past Gen 7 is 1/24
+                denominator = 24;
+                break;
+        }
+        float percentageChance = 1 / denominator;
+        float rand = Random.Range(0f, 1f);
+        return rand <= percentageChance;
+    }
+
+    private static bool MoveMissed(Attack attack)
+    {
+        int accuracy = attack.Accuracy;
+        return Random.Range(1, 100) >= accuracy;
+    }
+
+    //must be called when a monster switches out, or when haze or a similar is used
+    public void ResetStatModifiers()
+    {
+        foreach (Stat key in _statModifierStages.Keys.ToList())
+        {
+            _statModifierStages[key] = 0;
+        }
+        ComputeModifiedStats();
     }
 }
 
