@@ -119,7 +119,7 @@ public class Battle : MonoBehaviour
         PlayerAction p2Action = SelectPlayerActionType(_p2Choice);
         
         Message("Actions Selected. Press Space to see them play out!");
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        yield return WaitForInput();
         
         Debug.Log("Before HandleForfeit");
         //executed if anyone selected forfeit
@@ -131,7 +131,6 @@ public class Battle : MonoBehaviour
         {        
             Debug.Log("Before Both Switch");
             yield return HandleSwitch( _p1Choice, 1);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             yield return HandleSwitch(_p2Choice, 2);
         }
         else 
@@ -158,7 +157,7 @@ public class Battle : MonoBehaviour
         
         Debug.Log("The turn is now over");
         Message("The turn is over. Press space to start the next turn!");
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        yield return WaitForInput();
 
         _state = BattleState.Player1Choice;
         ShowActionPrompts(1, _p1MonA.MonsterHere);
@@ -182,8 +181,7 @@ public class Battle : MonoBehaviour
             }
             
             FindObjectOfType<MusicPlayer>().PlayWinMusic();
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
@@ -193,14 +191,14 @@ public class Battle : MonoBehaviour
             _state = BattleState.Player1MidTurnSwitch;
             UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
             yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
         }
         else if (_p2MonA.MonsterHere.Fainted)
         {
             _state = BattleState.Player2MidTurnSwitch;
             UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
             yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
         }
 
         
@@ -249,18 +247,16 @@ public class Battle : MonoBehaviour
     {
         if (_state == BattleState.Player1MidTurnSwitch)
         {
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             UpdateSwitchText(1, _p1MonA.MonsterHere, _forcedSwitchOptionsText);
             yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
             
         }
         else if (_state == BattleState.Player2MidTurnSwitch)
         {
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
             UpdateSwitchText(2, _p2MonA.MonsterHere, _forcedSwitchOptionsText);
             yield return new WaitUntil(() => _state != BattleState.Player1MidTurnSwitch && _state != BattleState.Player2MidTurnSwitch);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
         }
     }
 
@@ -279,8 +275,7 @@ public class Battle : MonoBehaviour
             }
             
             FindObjectOfType<MusicPlayer>().PlayWinMusic();
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+            yield return WaitForInput();
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
@@ -294,9 +289,8 @@ public class Battle : MonoBehaviour
         int switchIndex = playerChoice - 4;
         Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
         Message($"Player {playerNum} is switching to {player.team[switchIndex].UnitName}");
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         position.SwitchMonster(player.team[switchIndex]);
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        yield return WaitForInput();
     }
 
     private IEnumerator PlayersAttack(PlayerAction p1Action, PlayerAction p2Action)
@@ -369,39 +363,45 @@ public class Battle : MonoBehaviour
         
         second = ReassignTarget(first);
         
-        bool moveFailed1 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex);
+        bool moveFailed1 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex, firstCheck: true);
         
         //we must call reassign to make sure that the monster first is trying to attack is actually on the field and didn't switch out.
         first.UseAttack(firstAttackIndex, new[]{second}, moveFailed1);
-        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        yield return WaitForInput();
         
         if (_state == BattleState.Player1MidTurnSwitch || _state == BattleState.Player2MidTurnSwitch)
         {
             yield return HandlePivot();
         }
-        
+
         if (second != null && !second.Fainted && secondAttackIndex != -1)
         {
             //make sure first is still there, and not returned to its trainer after a pivot. a mon that isn't on the field cannot be attacked
             first = ReassignTarget(second);
 
-            
-            bool moveFailed2 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex);
-            second.UseAttack(secondAttackIndex, new[]{first}, moveFailed2);
-            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+
+            bool moveFailed2 = CheckFailure(first, firstAttackIndex, second, secondAttackIndex, firstCheck: false);
+            second.UseAttack(secondAttackIndex, new[] { first }, moveFailed2);
+            yield return WaitForInput();
             if (_state == BattleState.Player1MidTurnSwitch || _state == BattleState.Player2MidTurnSwitch)
             {
                 yield return HandlePivot();
             }
         }
+    }
+
+    private IEnumerator WaitForInput()
+    {
+        yield return new WaitForSeconds(0.05f);
         yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        yield return new WaitForSeconds(0.05f);
     }
 
     //this method will detect if a move being readied should fail because of some precondition that must be checked
     //before attacks can be executed. 
-    private bool CheckFailure(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
+    private bool CheckFailure(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex, bool firstCheck)
     {
-        return CheckSuckerPunchFail(first, firstAttackIndex, second, secondAttackIndex);
+        return CheckSuckerPunchFail(first, firstAttackIndex, second, secondAttackIndex, firstCheck);
     }
 
     /*sucker punch (and its variants, like thunderclap) have a unique effect:
@@ -415,23 +415,52 @@ public class Battle : MonoBehaviour
       this means that sucker punch variants will work if and only if 
       the move strikes first, and the opponent is readying an attack that deals direct damage.
      */
-    private bool CheckSuckerPunchFail(MonsterUnit first, int firstAttackIndex, MonsterUnit second = null, int secondAttackIndex = -1)
+    private bool CheckSuckerPunchFail(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex, bool firstCheck)
     {
         //if we were moving second, and we used sucker punch, our move will fail.
-        if (UsingSuckerPunch(second, secondAttackIndex)) return true;
+        if (UsingSuckerPunch(second, secondAttackIndex))
+        {
+            Debug.Log("Check Fail Case 1");
+            return true;
+
+        }
+
         
         //if we're not using sucker punch, then of course the sucker punch fail won't trigger. duh.
-        if (!UsingSuckerPunch(first, firstAttackIndex)) return false;
+        if (!UsingSuckerPunch(first, firstAttackIndex))
+        {
+            Debug.Log("Check Fail Case 2");
+            return false;
+        }
+
         
         //if the opponent isn't attacking, then sucker punch will fail.
-        if (secondAttackIndex == -1) return true;
-        
+        if (secondAttackIndex == -1)
+        {
+            Debug.Log("Check Fail Case 3");
+            return true;
+        }
+
+        //if our target doesn't exist, sucker punch will fail. duh.
+        if (second == null)
+        {
+            Debug.Log("Check Fail Case 4");
+            return true;
+        }
+
         //get the opponent's attack that they are readying
         Attack secondAttack = second.KnownAttacks[secondAttackIndex];
         
         //if that move is a status move (meaning it does no damage) then sucker punch will fail
-        if (secondAttack.Category == AttackCategory.Status) return true;
-        
+        //this should ONLY happen if this check is occuring for the first mon, hence the and condition.
+        if (secondAttack.Category == AttackCategory.Status && firstCheck)
+        {
+            Debug.Log("Check Fail Case 5");
+            return true;
+
+        }
+
+        Debug.Log("Check fail returned false");
         //if all of the above return statements never execute, then sucker punch will succeed.
         return false;
     }
@@ -449,10 +478,22 @@ public class Battle : MonoBehaviour
         
         //the suckerpunch effect must ALWAYS be the first secondary effect, according to this implementation.
         AttackEffect effect = effects[0];
-        
+
+
+        if (effect is SuckerPunchEffect)
+        {
+            Debug.Log($"{unit.UnitName} is using sucker punch!!");
+            return true;
+        }
+        else
+        {
+            Debug.Log($"{unit.UnitName} is NOT using sucker punch!!");
+            return false;
+        }
+
         /*if the first effect in the list of effects for the move they are readying is the sucker punch effect,
          then return true. else return false.*/
-        return effect is SuckerPunchEffect;
+        //return effect is SuckerPunchEffect;
     }
     
     private MonsterUnit ReassignTarget(MonsterUnit unit)

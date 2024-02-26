@@ -259,7 +259,7 @@ public class MonsterUnit
 
     private void ExecuteAllSecondaryEffects(Attack attack, MonsterUnit target, int damageToDeal)
     {
-        if (attack.SecondaryEffects.Length == 0) return;
+        if (attack.SecondaryEffects == null || attack.SecondaryEffects.Length == 0) return;
         
         for (int i = 0; i < attack.SecondaryEffects.Length; i++)
         {
