@@ -6,7 +6,7 @@ public class SelfHealEffect : AttackEffect
 {
     [SerializeField] private int healPercent = 50;
     
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt, bool moveMissed)
     {
         if (thisMonsterUnit.Heal(healPercent))
         {

@@ -121,15 +121,12 @@ public class Battle : MonoBehaviour
         Message("Actions Selected. Press Space to see them play out!");
         yield return WaitForInput();
         
-        Debug.Log("Before HandleForfeit");
         //executed if anyone selected forfeit
         yield return HandleForfeit(p1Action, p2Action);
 
-        Debug.Log("Before Handling Switch");
         //handle switching for both players
         if (p1Action == PlayerAction.Switch && p2Action == PlayerAction.Switch)
         {        
-            Debug.Log("Before Both Switch");
             yield return HandleSwitch( _p1Choice, 1);
             yield return HandleSwitch(_p2Choice, 2);
         }
@@ -137,25 +134,19 @@ public class Battle : MonoBehaviour
         {
             if (p1Action == PlayerAction.Switch)
             {
-                Debug.Log("Before P1 Switch");
-
                 yield return HandleSwitch( _p1Choice, 1);
             }
             
             if (p2Action == PlayerAction.Switch)
             {
-                Debug.Log("Before P2 Switch");
                 yield return HandleSwitch( _p2Choice, 2);
             }
         }
         
-        Debug.Log("Before Players Attack");
         yield return PlayersAttack(p1Action, p2Action);
         
-        Debug.Log("Before HandleFaint");
         yield return HandleFaint();
         
-        Debug.Log("The turn is now over");
         Message("The turn is over. Press space to start the next turn!");
         yield return WaitForInput();
 
@@ -225,19 +216,19 @@ public class Battle : MonoBehaviour
         return true;
     }
 
-    
+    //this method helps with move effects such as u-turn, flip turn, and volt switch
     public void Pivot(int playerNum)
     {
         //Debug.Log($"Battlefield Pivot Secondary Effect {playerNum}");
         if (playerNum == 1)
         {
-            Debug.Log("Player 1 is Pivoting");
+            //Debug.Log("Player 1 is Pivoting");
             Message(_infoText.text + "\nPlayer 1 is Switching!");
             _state = BattleState.Player1MidTurnSwitch;
         }
         else if (playerNum == 2)
         {
-            Debug.Log("Player 2 is Pivoting");
+            //Debug.Log("Player 2 is Pivoting");
             Message(_infoText.text + "\nPlayer 2 is Switching!");
             _state = BattleState.Player2MidTurnSwitch;
         }
@@ -287,7 +278,7 @@ public class Battle : MonoBehaviour
         Trainer player = playerNum == 1 ? _player1 : _player2;
         BattlePosition position =  playerNum == 1 ? _p1MonA : _p2MonA;
         int switchIndex = playerChoice - 4;
-        Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
+        //Debug.Log($"Player {playerNum} is switching to the monster at index {switchIndex}! That monster is {player.team[switchIndex].UnitName}");
         Message($"Player {playerNum} is switching to {player.team[switchIndex].UnitName}");
         position.SwitchMonster(player.team[switchIndex]);
         yield return WaitForInput();
@@ -392,15 +383,19 @@ public class Battle : MonoBehaviour
 
     private IEnumerator WaitForInput()
     {
-        yield return new WaitForSeconds(0.05f);
+        yield return new WaitForSeconds(0.1f);
         yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
-        yield return new WaitForSeconds(0.05f);
+        yield return new WaitForSeconds(0.1f);
     }
 
     //this method will detect if a move being readied should fail because of some precondition that must be checked
     //before attacks can be executed. 
     private bool CheckFailure(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex, bool firstCheck)
     {
+        //if there are no targets, the move should fail.
+        if (first == null || second == null) return true;
+        
+        //special check for sucker punch preconditions
         return CheckSuckerPunchFail(first, firstAttackIndex, second, secondAttackIndex, firstCheck);
     }
 
@@ -418,49 +413,26 @@ public class Battle : MonoBehaviour
     private bool CheckSuckerPunchFail(MonsterUnit first, int firstAttackIndex, MonsterUnit second, int secondAttackIndex, bool firstCheck)
     {
         //if we were moving second, and we used sucker punch, our move will fail.
-        if (UsingSuckerPunch(second, secondAttackIndex))
-        {
-            Debug.Log("Check Fail Case 1");
-            return true;
-
-        }
+        if (UsingSuckerPunch(second, secondAttackIndex)) return true;
 
         
         //if we're not using sucker punch, then of course the sucker punch fail won't trigger. duh.
-        if (!UsingSuckerPunch(first, firstAttackIndex))
-        {
-            Debug.Log("Check Fail Case 2");
-            return false;
-        }
-
+        if (!UsingSuckerPunch(first, firstAttackIndex)) return false;
+        
         
         //if the opponent isn't attacking, then sucker punch will fail.
-        if (secondAttackIndex == -1)
-        {
-            Debug.Log("Check Fail Case 3");
-            return true;
-        }
-
+        if (secondAttackIndex == -1) return true;
+        
         //if our target doesn't exist, sucker punch will fail. duh.
-        if (second == null)
-        {
-            Debug.Log("Check Fail Case 4");
-            return true;
-        }
+        if (second == null) return true;
 
         //get the opponent's attack that they are readying
         Attack secondAttack = second.KnownAttacks[secondAttackIndex];
         
         //if that move is a status move (meaning it does no damage) then sucker punch will fail
         //this should ONLY happen if this check is occuring for the first mon, hence the and condition.
-        if (secondAttack.Category == AttackCategory.Status && firstCheck)
-        {
-            Debug.Log("Check Fail Case 5");
-            return true;
-
-        }
-
-        Debug.Log("Check fail returned false");
+        if (secondAttack.Category == AttackCategory.Status && firstCheck) return true;
+        
         //if all of the above return statements never execute, then sucker punch will succeed.
         return false;
     }
@@ -478,22 +450,10 @@ public class Battle : MonoBehaviour
         
         //the suckerpunch effect must ALWAYS be the first secondary effect, according to this implementation.
         AttackEffect effect = effects[0];
-
-
-        if (effect is SuckerPunchEffect)
-        {
-            Debug.Log($"{unit.UnitName} is using sucker punch!!");
-            return true;
-        }
-        else
-        {
-            Debug.Log($"{unit.UnitName} is NOT using sucker punch!!");
-            return false;
-        }
-
+        
         /*if the first effect in the list of effects for the move they are readying is the sucker punch effect,
          then return true. else return false.*/
-        //return effect is SuckerPunchEffect;
+        return effect is SuckerPunchEffect;
     }
     
     private MonsterUnit ReassignTarget(MonsterUnit unit)
@@ -549,13 +509,13 @@ public class Battle : MonoBehaviour
 
     private void SelectPlayerChoice(int buttonPressed)
     {
-        Debug.Log($"Pressed {buttonPressed}");
+        //Debug.Log($"Pressed {buttonPressed}");
         if (_state == BattleState.Player1Choice)
         {
             _p1Choice = buttonPressed;
             if (ChoiceInvalid(1, _p1Choice))
             {
-                Debug.Log("Invalid choice from player 1!");
+                //Debug.Log("Invalid choice from player 1!");
                 _p1Choice = -1;
                 return;
             }
@@ -567,7 +527,7 @@ public class Battle : MonoBehaviour
             _p2Choice = buttonPressed;
             if (ChoiceInvalid(2, _p2Choice))
             {
-                Debug.Log("Invalid choice from player 2!");
+                //Debug.Log("Invalid choice from player 2!");
                 _p2Choice = -1;
                 return;
             }
@@ -579,7 +539,7 @@ public class Battle : MonoBehaviour
         {
             if (ChoiceInvalid(1, buttonPressed))
             {
-                Debug.Log("Invalid mid-switch choice from player 1!");
+                //Debug.Log("Invalid mid-switch choice from player 1!");
                 return;
             }
 
@@ -592,7 +552,7 @@ public class Battle : MonoBehaviour
         {
             if (ChoiceInvalid(2, buttonPressed))
             {
-                Debug.Log("Invalid mid-switch choice from player 2!");
+                //Debug.Log("Invalid mid-switch choice from player 2!");
                 return;
             }
 
@@ -767,6 +727,12 @@ public class Battle : MonoBehaviour
     private void Message(string message)
     {
         _infoText.text = message;
+    }
+
+    public static MonsterUnit[] GetAllMonstersBattling()
+    {
+        Battle theBattle = FindObjectOfType<Battle>();
+        return new[] { theBattle._p1MonA.MonsterHere, theBattle._p2MonA.MonsterHere };
     }
 
 

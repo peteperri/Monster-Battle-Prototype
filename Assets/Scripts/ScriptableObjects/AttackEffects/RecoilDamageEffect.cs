@@ -4,10 +4,12 @@
 [CreateAssetMenu(fileName = "New Recoil Damage", menuName = "Attack Effect/Recoil Damage")]
 public class RecoilDamageEffect : AttackEffect
 {
-    [SerializeField] private int recoilPercentage = 33;
+    [SerializeField] protected int recoilPercentage = 33;
 
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
+    public  override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt, bool moveMissed)
     {
+        if (moveMissed) return;
+        
         float recoilFactor = recoilPercentage / 100f;
         float recoilDamage = damageDealt * recoilFactor;
         Debug.Log($"Damage dealt: {damageDealt}");

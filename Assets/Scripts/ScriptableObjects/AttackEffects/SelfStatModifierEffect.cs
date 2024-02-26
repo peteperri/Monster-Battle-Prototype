@@ -7,7 +7,7 @@ public class SelfStatModifierEffect : AttackEffect
     [SerializeField] private Stat statToEffect;
     [SerializeField] private int stagesToAddOrRemove;
 
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt, bool moveMissed)
     {
         if (statToEffect == Stat.Health) return;
         

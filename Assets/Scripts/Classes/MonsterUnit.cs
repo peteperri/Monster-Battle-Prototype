@@ -129,17 +129,17 @@ public class MonsterUnit
     //this method takes in an array of targets for future double-battle functionality
     //at this time, this array will only ever have a size of one, because 
     //double battles are not yet implemented.
-    public void UseAttack(int attackIndex, MonsterUnit[] targets, bool attackFailed)
+    public void UseAttack(int attackIndex, MonsterUnit[] targets, bool attackFailed, bool moveMissed = false)
     {
         if (attackIndex > KnownAttacks.Length || attackIndex < 0)
         {
-            Debug.Log($"{UnitName} tried to use a move outside of its range.");
+            //Debug.Log($"{UnitName} tried to use a move outside of its range.");
             return;
         }
 
         if (Fainted)
         {
-            Debug.Log($"{UnitName} has fainted and cannot attack!");
+            //Debug.Log($"{UnitName} has fainted and cannot attack!");
             return;
         }
         
@@ -154,7 +154,7 @@ public class MonsterUnit
         
         if (attack.Target == AttackTarget.Self)
         {
-            ExecuteAllSecondaryEffects(attack, this, 0);
+            ExecuteAllSecondaryEffects(attack, this, 0, moveMissed);
             return;
         }
         
@@ -172,15 +172,17 @@ public class MonsterUnit
 
     private void AttackSingleTarget(Attack attack, MonsterUnit target)
     {
-        Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
+        //Debug.Log($"{_species.name} used {attack.name} on {target._species.name}!");
            
         int damageDealt = 0;
 
         MonsterSpecies targetSpecies = target.GetSpecies();
 
-        if (MoveMissed(attack))
+        bool moveMissed = MoveMissed(attack);
+        if (moveMissed)
         {
             Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...But it missed!");
+            MissRecoilCheck(attack);
             return;
         }
 
@@ -188,6 +190,7 @@ public class MonsterUnit
         if (typingMultiplier == 0)
         {
             Battle.StaticMessage($"{Battle.GetCurrentMessage()} ...But the target was immune!");
+            MissRecoilCheck(attack);
             return;
         }
         
@@ -216,7 +219,7 @@ public class MonsterUnit
 
             damageDealt = DealDamage(attack, target, isCrit, typingMultiplier);
         }
-        ExecuteAllSecondaryEffects(attack, target, damageDealt);
+        ExecuteAllSecondaryEffects(attack, target, damageDealt, moveMissed);
     }
 
     private int DealDamage(Attack attack, MonsterUnit target, bool isCrit, float typingMultiplier)
@@ -257,13 +260,13 @@ public class MonsterUnit
         return damageToDeal;
     }
 
-    private void ExecuteAllSecondaryEffects(Attack attack, MonsterUnit target, int damageToDeal)
+    private void ExecuteAllSecondaryEffects(Attack attack, MonsterUnit target, int damageToDeal, bool moveMissed)
     {
         if (attack.SecondaryEffects == null || attack.SecondaryEffects.Length == 0) return;
         
         for (int i = 0; i < attack.SecondaryEffects.Length; i++)
         {
-            attack.SecondaryEffects[i].ExecuteSecondaryEffect(this, target, damageToDeal);
+            attack.SecondaryEffects[i].ExecuteSecondaryEffect(this, target, damageToDeal, moveMissed);
         }
     }
 
@@ -277,7 +280,7 @@ public class MonsterUnit
         {
             Fainted = true;
             Battle.StaticMessage($"{Battle.GetCurrentMessage()}\n{this._species.name} has fainted!");
-            Debug.Log($"{this._species.name} has fainted!");
+            //Debug.Log($"{this._species.name} has fainted!");
         }
 
         PositionInBattle.UpdateStatus();
@@ -370,6 +373,17 @@ public class MonsterUnit
         }
         ComputeModifiedStats();
     }
+
+    //some moves, like high jump kick, require their secondary effect to execute if and only if the attack does not conect.
+    private void MissRecoilCheck(Attack attack)
+    {
+        AttackEffect[] attackEffects = attack.SecondaryEffects;
+        if (attackEffects != null && attackEffects.Length > 0 && attackEffects[0] is MissRecoilDamageEffect)
+        {
+            attack.SecondaryEffects[0].ExecuteSecondaryEffect(this, null, 0, true);
+        }
+    }
+    
 }
 
 

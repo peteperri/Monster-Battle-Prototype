@@ -10,9 +10,11 @@ public class BattlePosition : MonoBehaviour
     private Transform _statusTextParent;
     private TextMeshProUGUI _healthText;
 
-    public Trainer Player { get; private set; } 
-    
-    void Awake()
+    public Trainer Player { get; private set; }
+
+    public bool HasStealthRocks { get; private set; } = false;
+
+    private void Awake()
     {
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _statusTextParent = transform.GetChild(0);
@@ -66,6 +68,8 @@ public class BattlePosition : MonoBehaviour
         _spriteRenderer.sprite = newMonster.GetSpecies().Sprite;
         
         Battle.StaticMessage($"{MonsterHere.UnitName} has entered the battlefield!");
+
+        ApplyHazardDamage(MonsterHere);
         
         UpdateStatusText();
     }
@@ -81,7 +85,7 @@ public class BattlePosition : MonoBehaviour
         UpdateStatusText();
     }
 
-    public void UpdateStatusText()
+    private void UpdateStatusText()
     {
         UpdateHealthText();
     }
@@ -91,4 +95,37 @@ public class BattlePosition : MonoBehaviour
         _healthText.text = $"Health: {MonsterHere.GetStat(Stat.Health)}/{MonsterHere.GetMaxHealth()}";
     }
 
+    public void SetStealthRock()
+    {
+        HasStealthRocks = true;
+    }
+
+    //add more variables for future hazards later
+    public void ClearHazards()
+    {
+        HasStealthRocks = false;
+    }
+
+    //TODO: expand on this method later for future entry hazards
+    private void ApplyHazardDamage(MonsterUnit monsterHere)
+    {
+        if (HasStealthRocks)
+        {
+            ApplyStealthRockDamage(monsterHere);
+        }
+    }
+
+    private void ApplyStealthRockDamage(MonsterUnit monsterHere)
+    {
+        float rockWeakness = monsterHere.GetSpecies().GetTypeMultiplier(ElementalType.Rock);
+        float defaultDamagePercentage = 12.5f;
+        float actualPercentage = rockWeakness * defaultDamagePercentage;
+
+        float maxHealth = monsterHere.GetMaxHealth();
+
+        float damageToDeal = maxHealth * (actualPercentage / 100);
+        
+        Battle.StaticMessage(Battle.GetCurrentMessage() + $"\n{MonsterHere.UnitName} was hurt by Stealth Rocks!");
+        monsterHere.TakeDamage(Mathf.RoundToInt(damageToDeal));
+    }
 }

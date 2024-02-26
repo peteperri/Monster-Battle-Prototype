@@ -8,10 +8,12 @@ public class OpponentStatModifierEffect : AttackEffect
     [SerializeField] private int stagesToAddOrRemove;
     [SerializeField] private int percentageChance;
     
-    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt)
+    public override void ExecuteSecondaryEffect(MonsterUnit thisMonsterUnit, MonsterUnit target, int damageDealt, bool moveMissed)
     {
         if (statToEffect == Stat.Health) return;
 
+        if (moveMissed) return;
+        
         int rand = Random.Range(1, 100);
         if (rand <= percentageChance)
         {
