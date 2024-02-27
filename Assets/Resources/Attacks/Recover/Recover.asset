@@ -22,5 +22,5 @@ MonoBehaviour:
   <Target>k__BackingField: 1
   <CritRate>k__BackingField: 0
   <MakesContact>k__BackingField: 0
-  <SecondaryEffect>k__BackingField:
+  <SecondaryEffects>k__BackingField:
   - {fileID: 11400000, guid: 302bfff88d8a69b46b60a4595c9367c8, type: 2}

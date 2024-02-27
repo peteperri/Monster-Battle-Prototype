@@ -71,7 +71,7 @@ public class BattlePosition : MonoBehaviour
 
         ApplyHazardDamage(MonsterHere);
         
-        UpdateStatusText();
+        UpdateMonsterInfoText();
     }
 
     public void UpdateStatus()
@@ -82,12 +82,19 @@ public class BattlePosition : MonoBehaviour
             _spriteRenderer.sprite = null;
         }
 
-        UpdateStatusText();
+        UpdateMonsterInfoText();
     }
 
-    private void UpdateStatusText()
+    private void UpdateMonsterInfoText()
     {
         UpdateHealthText();
+        UpdateStatusConditionText();
+    }
+
+    private void UpdateStatusConditionText()
+    {
+        if (MonsterHere.StatusCondition == StatusCondition.None) return;
+        _healthText.text += $"\n{MonsterHere.StatusCondition}";
     }
 
     private void UpdateHealthText()

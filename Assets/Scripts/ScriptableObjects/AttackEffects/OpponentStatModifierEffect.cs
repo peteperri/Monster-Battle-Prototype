@@ -1,4 +1,8 @@
-﻿using UnityEngine;
+﻿/*TODO: To reduce repeated code, refactor this out into multiple classes: one for applying a stat drop, and another for
+  applying any secondary effect, but only with a certain percentage chance.
+ */
+
+using UnityEngine;
 
 [System.Serializable]
 [CreateAssetMenu(fileName = "New Opponent Stat Modifier", menuName = "Attack Effect/Opponent Stat Modifier")]
@@ -13,6 +17,8 @@ public class OpponentStatModifierEffect : AttackEffect
         if (statToEffect == Stat.Health) return;
 
         if (moveMissed) return;
+
+        if (target.Fainted) return;
         
         int rand = Random.Range(1, 100);
         if (rand <= percentageChance)

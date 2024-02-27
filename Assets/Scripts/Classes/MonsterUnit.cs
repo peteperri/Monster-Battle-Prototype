@@ -1,9 +1,7 @@
 using System;
 using System.Linq;
 using AYellowpaper.SerializedCollections;
-using UnityEditor.Experimental.Rendering;
 using UnityEngine;
-using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 //a monster unit is an individual, customized monster. only customizable/changeable traits are controlled by this class
@@ -22,6 +20,8 @@ public class MonsterUnit
 
     public BattlePosition PositionInBattle { get; set; }
 
+    public StatusCondition StatusCondition { get; private set; }
+
     //just using a SerializedDictionary without actually serializing it so I can easily view it in the Debug inspector
     private SerializedDictionary<Stat, int> _statsBeforeModifiers;
     private SerializedDictionary<Stat, int> _statsAfterModifiers;
@@ -35,16 +35,14 @@ public class MonsterUnit
         _statsBeforeModifiers = new SerializedDictionary<Stat, int>();
         _statsAfterModifiers = new SerializedDictionary<Stat, int>();
         _statModifierStages = new SerializedDictionary<Stat, int>();
+        StatusCondition = StatusCondition.None;
         
         KnownAttacks = new Attack[4];
         UnitName = nickname;
         Fainted = false;
         PositionInBattle = null;
         
-        //Fainted = Random.Range(1, 3) == 1;
-       
-        
-        //currently gives every mon the first four moves in their learnset; needs to be removed if customization is implemented
+        //currently gives every mon the first four moves in their learnset. TODO: needs to be removed when customization is implemented
         for (int i = 0; i < KnownAttacks.Length && i < _species.LearnSet.Length; i++)
         {
             KnownAttacks[i] = _species.LearnSet[i];
@@ -142,9 +140,15 @@ public class MonsterUnit
             //Debug.Log($"{UnitName} has fainted and cannot attack!");
             return;
         }
-        
+
+        if (StatusCondition == StatusCondition.Paralyzed && ImmobilizedByParalysis())
+        {
+            Battle.StaticMessage($"{UnitName} is paralyzed, and cannot move!");
+            return;
+        }
+
         Attack attack = KnownAttacks[attackIndex];
-        Battle.StaticMessage($"{_species.name} used {attack.name}!");
+        Battle.StaticMessage($"{UnitName} used {attack.name}!");
         
         if (attackFailed)
         {
@@ -370,6 +374,7 @@ public class MonsterUnit
         foreach (Stat key in _statModifierStages.Keys.ToList())
         {
             _statModifierStages[key] = 0;
+
         }
         ComputeModifiedStats();
     }
@@ -383,7 +388,38 @@ public class MonsterUnit
             attack.SecondaryEffects[0].ExecuteSecondaryEffect(this, null, 0, true);
         }
     }
+
+    //if this monster is paralyzed, there is a 1/4th chance that they cannot move
+    private bool ImmobilizedByParalysis()
+    {
+        return Random.Range(1, 4) == 1;
+    }
     
+    public void ApplyStatus(StatusCondition conditionToApply)
+    {
+        //guard clause to prevent this method from healing 
+        if (conditionToApply == StatusCondition.None) return;
+
+        //status conditions can't be overwritten: if we already have one, we can't get a new one.
+        if (this.StatusCondition != StatusCondition.None) return;
+
+        this.StatusCondition = conditionToApply;
+        this.PositionInBattle.UpdateStatus();
+
+        if (this.StatusCondition == StatusCondition.Paralyzed)
+        {
+            /*speed should be divided by 2 if we are paralyzed.
+            applied to stat before modifiers to ensure that switching out/haze does not remove this drop
+            
+            TODO: undo this division if/when healing of status conditions is added 
+            TODO: add this type of division to the Strength stat when burned, once burn is implemented
+            TODO: experiment with adding this type of stat drop to status conditions like drowsy/frostbitten to mimic Legends: Arceus*/
+            
+            _statsBeforeModifiers[Stat.Readiness] /= 2;
+            _statsAfterModifiers[Stat.Readiness] /= 2;
+            ComputeModifiedStats();
+        }
+    }
 }
 
 

@@ -28,7 +28,7 @@ public class EffortValues
     public int reflexValues;
 
     
-    //will add parameterized constructor for use when customizing EVs later.
+    //TODO: add parameterized constructor for use when customizing EVs!
     public EffortValues()
     {
         healthValues = 85;

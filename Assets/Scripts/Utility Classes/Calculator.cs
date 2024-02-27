@@ -48,13 +48,9 @@ public static class Calculator
         float statFactor = movePower * (myAttackingStat / opponentsDefendingStat);
         float rawDamage = (levelFactor * statFactor) / 50 + 2;
         
-        /*according to bulbapedia, "all divisions and multiplications past the initial
-         base damage calculation are rounded to the nearest integer if the result is not an integer 
-         (rounding down at 0.5).
-         in practice this means round damage BEFORE applying multipliers */
+      
         int damageRounded = Mathf.RoundToInt(rawDamage);
         
-        //round again because we have to :)
         return Mathf.RoundToInt(damageRounded * multipliers);
     }
 }
